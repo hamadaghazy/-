@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>متابعة دراسة الأولاد</title>
+<style>
+  :root{
+    --bg:#f4f6fb;
+    --card:#ffffff;
+    --primary:#3f6bd6;
+    --primary-dark:#2f52ac;
+    --danger:#e0524d;
+    --danger-dark:#c43f3a;
+    --success:#3fa66b;
+    --text:#22273a;
+    --muted:#6b7280;
+    --border:#e3e7f0;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Segoe UI", Tahoma, Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding-bottom:60px;
+  }
+  header{
+    background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+    color:#fff;
+    padding:22px 16px;
+    text-align:center;
+    box-shadow:0 4px 14px rgba(0,0,0,.12);
+  }
+  header h1{margin:0;font-size:1.5rem;}
+  header p{margin:6px 0 0;opacity:.9;font-size:.9rem;}
+
+  .container{
+    max-width:1100px;
+    margin:20px auto;
+    padding:0 14px;
+  }
+
+  .kids-bar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    margin-bottom:18px;
+  }
+  .kid-tab{
+    padding:9px 18px;
+    border-radius:999px;
+    background:var(--card);
+    border:2px solid var(--border);
+    cursor:pointer;
+    font-weight:600;
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    transition:.15s;
+  }
+  .kid-tab.active{
+    background:var(--primary);
+    border-color:var(--primary);
+    color:#fff;
+  }
+  .kid-tab .del-kid{
+    background:none;border:none;color:inherit;opacity:.7;cursor:pointer;font-size:1rem;line-height:1;
+  }
+  .kid-tab .del-kid:hover{opacity:1;color:#ffdada;}
+  .add-kid-btn{
+    padding:9px 16px;
+    border-radius:999px;
+    border:2px dashed var(--primary);
+    background:transparent;
+    color:var(--primary-dark);
+    cursor:pointer;
+    font-weight:600;
+  }
+
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:18px;
+    margin-bottom:20px;
+    box-shadow:0 2px 10px rgba(20,30,60,.06);
+    border:1px solid var(--border);
+  }
+  .card h2{
+    margin:0 0 14px;
+    font-size:1.15rem;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .card h2 .badge{
+    font-size:.75rem;
+    background:var(--bg);
+    color:var(--muted);
+    padding:3px 10px;
+    border-radius:999px;
+    font-weight:500;
+  }
+  .kid-notes{
+    margin-top:8px;
+    font-size:.83rem;
+    color:var(--muted);
+    background:var(--bg);
+    padding:8px 12px;
+    border-radius:10px;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:.92rem;
+  }
+  thead th{
+    text-align:right;
+    color:var(--muted);
+    font-weight:600;
+    padding:8px 6px;
+    border-bottom:2px solid var(--border);
+    white-space:nowrap;
+  }
+  tbody td{
+    padding:8px 6px;
+    border-bottom:1px solid var(--border);
+    vertical-align:middle;
+  }
+  tbody tr:hover{background:#f9fafc;}
+  .empty-row td{
+    text-align:center;
+    color:var(--muted);
+    padding:20px;
+  }
+
+  input[type=text], input[type=number], input[type=date], input[type=time], select, textarea{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:.9rem;
+    font-family:inherit;
+    background:#fff;
+    color:var(--text);
+  }
+  input:focus, select:focus, textarea:focus{
+    outline:none;
+    border-color:var(--primary);
+    box-shadow:0 0 0 3px rgba(63,107,214,.15);
+  }
+
+  .btn{
+    border:none;
+    border-radius:8px;
+    padding:8px 14px;
+    font-weight:600;
+    cursor:pointer;
+    font-size:.88rem;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  .btn-primary{background:var(--primary);color:#fff;}
+  .btn-primary:hover{background:var(--primary-dark);}
+  .btn-danger{background:#fdeceb;color:var(--danger-dark);}
+  .btn-danger:hover{background:var(--danger);color:#fff;}
+  .btn-ghost{background:var(--bg);color:var(--text);}
+  .btn-ghost:hover{background:#e9edf6;}
+  .btn-sm{padding:5px 10px;font-size:.8rem;}
+  .icon-btn{
+    background:none;border:none;cursor:pointer;font-size:1rem;padding:4px 6px;border-radius:6px;color:var(--muted);
+  }
+  .icon-btn:hover{background:var(--bg);color:var(--text);}
+  .icon-btn.danger:hover{color:var(--danger-dark);background:#fdeceb;}
+
+  .add-form{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px;
+    margin-bottom:14px;
+    align-items:end;
+  }
+  .add-form label{
+    font-size:.78rem;
+    color:var(--muted);
+    margin-bottom:4px;
+    display:block;
+    font-weight:600;
+  }
+  .add-form .full{grid-column:1/-1;}
+  .add-form .actions{grid-column:1/-1;text-align:left;}
+
+  .summary-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:12px;
+    margin-bottom:16px;
+  }
+  .stat{
+    background:var(--bg);
+    border-radius:12px;
+    padding:14px;
+    text-align:center;
+  }
+  .stat .val{font-size:1.3rem;font-weight:700;color:var(--primary-dark);}
+  .stat .lbl{font-size:.8rem;color:var(--muted);margin-top:2px;}
+  .stat.paid .val{color:var(--success);}
+  .stat.due .val{color:var(--danger-dark);}
+
+  .day-badge{
+    background:#eaf0fd;color:var(--primary-dark);
+    padding:3px 9px;border-radius:999px;font-size:.78rem;font-weight:600;white-space:nowrap;
+  }
+  .status-paid{color:var(--success);font-weight:700;}
+  .status-due{color:var(--danger-dark);font-weight:700;}
+
+  .toolbar{
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .empty-state{
+    text-align:center;
+    padding:50px 20px;
+    color:var(--muted);
+  }
+  .empty-state h3{color:var(--text);}
+
+  /* ----- unified weekly view ----- */
+  .view-toggle{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .view-toggle button{
+    padding:9px 18px;border-radius:999px;border:2px solid var(--border);
+    background:var(--card);cursor:pointer;font-weight:600;color:var(--text);
+  }
+  .view-toggle button.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.85rem;}
+  .legend span.item{display:inline-flex;align-items:center;gap:6px;}
+  .legend .dot{width:12px;height:12px;border-radius:50%;display:inline-block;}
+  .week-day{margin-bottom:16px;}
+  .week-day h3{
+    margin:0 0 8px;font-size:1rem;display:flex;align-items:center;gap:8px;
+    border-bottom:2px solid var(--border);padding-bottom:6px;
+  }
+  .week-day h3 .cnt{font-size:.72rem;color:var(--muted);font-weight:500;}
+  .slot{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:10px 12px;border-radius:10px;border:1px solid var(--border);
+    margin-bottom:7px;background:#fff;border-inline-start:5px solid var(--kidc,#ccc);
+  }
+  .slot .time{font-weight:700;min-width:96px;font-size:.9rem;}
+  .slot .who{font-size:.75rem;color:#fff;padding:2px 10px;border-radius:999px;white-space:nowrap;}
+  .slot .subj{font-weight:600;flex:1;min-width:120px;}
+  .slot .tchr{font-size:.8rem;color:var(--muted);font-weight:400;}
+  .slot .warn{margin-inline-start:auto;color:var(--danger-dark);font-weight:700;font-size:.8rem;white-space:nowrap;}
+  .slot.conflict{background:#fdeceb;border-color:var(--danger);}
+  .empty-day{color:var(--muted);font-size:.85rem;padding:2px;}
+
+  @media print{
+    .no-print{display:none !important;}
+    body{background:#fff;}
+    .card{box-shadow:none;border:1px solid #ccc;}
+  }
+  input[type=file]{display:none;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📚 متابعة دراسة الأولاد</h1>
+  <p>الجدول الدراسي، أسماء المدرسين، والمصاريف — كل حاجة قابلة للتعديل والإضافة والحذف</p>
+</header>
+
+<div class="container">
+
+  <div class="view-toggle no-print" id="viewToggle"></div>
+
+  <div class="kids-bar no-print" id="kidsBar"></div>
+
+  <div id="emptyState" class="empty-state" style="display:none">
+    <h3>مفيش ولاد مضافين لسه</h3>
+    <p>دوس على "➕ إضافة ولد" فوق عشان تبدأ تضيف بياناته.</p>
+  </div>
+
+  <div id="kidContent"></div>
+
+  <div class="toolbar no-print">
+    <button class="btn btn-ghost btn-sm" onclick="resetToSeed()">↩️ استرجاع البيانات الأصلية</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportData()">⬇️ تصدير نسخة احتياطية</button>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('importFile').click()">⬆️ استيراد نسخة</button>
+    <input type="file" id="importFile" accept="application/json" onchange="importData(event)">
+    <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ طباعة</button>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'kids-study-tracker-v2';
+const CURRENCIES = ['ج.م','د.ك','ر.س','درهم','دولار'];
+
+// ---------- Default data (بيانات الأولاد الحقيقية) ----------
+function defaultSeed(){
+  return { kids: [
+    {
+      id:'k_selim', name:'سليم',
+      stage:'الصف الثالث الابتدائي — مدرسة النجاة الأهلية السالمية بنين',
+      notes:'رقم الطالب: 20240081 · رقم ولي الأمر: 18368 · الرسوم المدرسية السنوية: 406 د.ك',
+      subjects:[
+        {id:'s1',name:'تأسيس رياضيات',teacher:'مس أم أحمد',day:'السبت والثلاثاء',from:'16:00',to:'',notes:'450 ج.م / 8 حصص شهريًا'},
+        {id:'s2',name:'تأسيس عربي (3ب)',teacher:'أ. محمود عبد الحليم',day:'الاثنين والخميس',from:'20:00',to:'',notes:'500 ج.م / 8 حصص شهريًا'},
+        {id:'s3',name:'مجموعة تأسيس عربي',teacher:'مس رنا',day:'الأحد والأربعاء',from:'14:00',to:'',notes:'300 ج.م / 8 حصص شهريًا'},
+        {id:'s4',name:'مجموعة إنجليزي',teacher:'مس سعاد أمين',day:'الأحد والأربعاء',from:'18:00',to:'',notes:'300 ج.م شهريًا'},
+        {id:'s5',name:'علوم (أكاديمية أونلاين)',teacher:'مس غيداء',day:'الاثنين والخميس',from:'16:00',to:'',notes:'الاثنين 4م / الخميس 6م — أونلاين · 600 ج.م شهريًا'},
+        {id:'s6',name:'التفوق — رياضيات',teacher:'مس حبيبة',day:'الأحد والأربعاء',from:'16:00',to:'',notes:'ضمن كورسات التفوق (1,400 ج.م)'},
+        {id:'s7',name:'التفوق — إنجليزي',teacher:'مس صفاء',day:'السبت والثلاثاء',from:'18:00',to:'',notes:'ضمن كورسات التفوق'},
+        {id:'s8',name:'التفوق — عربي',teacher:'مس هبة الله',day:'الثلاثاء والخميس',from:'13:00',to:'',notes:'الثلاثاء 1م / الخميس 4م — ضمن التفوق'}
+      ],
+      expenses:[
+        {id:'e1',title:'الرسوم المدرسية السنوية',amount:406,currency:'د.ك',date:'',paid:false,notes:'مدرسة النجاة — راجع حالة السداد'},
+        {id:'e2',title:'تأسيس رياضيات (مس أم أحمد) — شهر 7',amount:450,currency:'ج.م',date:'2026-07-01',paid:true,notes:''},
+        {id:'e3',title:'تأسيس عربي (أ. محمود)',amount:500,currency:'ج.م',date:'2026-07-01',paid:true,notes:''},
+        {id:'e4',title:'مجموعة عربي (مس رنا)',amount:300,currency:'ج.م',date:'2026-07-01',paid:true,notes:''},
+        {id:'e5',title:'مجموعة إنجليزي (مس سعاد)',amount:300,currency:'ج.م',date:'2026-07-22',paid:true,notes:'عبر إنستاباي'},
+        {id:'e6',title:'علوم (مس غيداء)',amount:600,currency:'ج.م',date:'2026-07-01',paid:true,notes:'أونلاين'},
+        {id:'e7',title:'كورسات التفوق (رياضيات + إنجليزي + عربي)',amount:1400,currency:'ج.م',date:'2026-07-01',paid:true,notes:'مس حبيبة + مس صفاء + مس هبة الله'},
+        {id:'e8',title:'رياضيات أم أحمد — أغسطس',amount:450,currency:'ج.م',date:'2026-08-01',paid:false,notes:'تكرار شهري'},
+        {id:'e9',title:'عربي أ. محمود — أغسطس',amount:500,currency:'ج.م',date:'2026-08-01',paid:false,notes:'تكرار شهري'},
+        {id:'e10',title:'عربي مس رنا — أغسطس',amount:300,currency:'ج.م',date:'2026-08-01',paid:false,notes:'تكرار شهري'},
+        {id:'e11',title:'إنجليزي مس سعاد — أغسطس',amount:300,currency:'ج.م',date:'2026-08-01',paid:false,notes:'تكرار شهري'}
+      ]
+    },
+    {
+      id:'k_sara', name:'سارة',
+      stage:'الصف الثالث الثانوي الأدبي — نظام أبناؤنا في الخارج',
+      notes:'',
+      subjects:[
+        {id:'sa1',name:'اللغة الإنجليزية',teacher:'مس إسراء (ART SARA)',day:'السبت والأربعاء',from:'16:00',to:'',notes:'كورس الشهرين 26/6 → 26/8 (1,500 ج.م)'},
+        {id:'sa2',name:'اللغة العربية',teacher:'أ. محمود عبد الحليم',day:'الأحد والأربعاء',from:'20:00',to:'',notes:'مشترك مع سيف · المنهج الأساسي يبدأ أغسطس 2026 (800 ج.م شهريًا / 8 حصص)'}
+      ],
+      expenses:[
+        {id:'sae1',title:'إنجليزي مس إسراء — دفعة',amount:1000,currency:'ج.م',date:'2026-06-26',paid:true,notes:'كورس الشهرين'},
+        {id:'sae2',title:'عمولة مشرفة (إنجليزي مس إسراء)',amount:500,currency:'ج.م',date:'2026-06-26',paid:true,notes:''},
+        {id:'sae3',title:'إنجليزي مس إسراء — قسط أخير',amount:500,currency:'ج.م',date:'2026-08-26',paid:false,notes:'قبل 26/08'},
+        {id:'sae4',title:'عربي أ. محمود — كورس تأهيلي',amount:1200,currency:'ج.م',date:'',paid:true,notes:'مشترك (سارة + سيف)'},
+        {id:'sae5',title:'عربي أ. محمود — منهج أساسي (أغسطس)',amount:800,currency:'ج.م',date:'2026-08-01',paid:false,notes:'8 حصص شهريًا'}
+      ]
+    },
+    {
+      id:'k_seif', name:'سيف',
+      stage:'الصف الثاني الثانوي العلمي — نظام أبناؤنا في الخارج',
+      notes:'',
+      subjects:[
+        {id:'se1',name:'اللغة الإنجليزية',teacher:'مس إسراء (ART SARA)',day:'الأحد والجمعة',from:'16:00',to:'',notes:'كورس الشهرين 26/6 → 26/8 (1,500 ج.م)'},
+        {id:'se2',name:'اللغة العربية',teacher:'أ. محمود عبد الحليم',day:'الأحد والأربعاء',from:'20:00',to:'',notes:'مشترك مع سارة · منهج أساسي من أغسطس (800 ج.م شهريًا)'},
+        {id:'se3',name:'العلوم',teacher:'مدرس علوم سيف',day:'',from:'',to:'',notes:'دفعة لمرة واحدة'}
+      ],
+      expenses:[
+        {id:'see1',title:'إنجليزي مس إسراء — دفعة',amount:1000,currency:'ج.م',date:'2026-06-26',paid:true,notes:'كورس الشهرين'},
+        {id:'see2',title:'عمولة مشرفة (إنجليزي مس إسراء)',amount:500,currency:'ج.م',date:'2026-06-26',paid:true,notes:''},
+        {id:'see3',title:'إنجليزي مس إسراء — قسط أخير',amount:500,currency:'ج.م',date:'2026-08-26',paid:false,notes:'قبل 26/08'},
+        {id:'see4',title:'العلوم (دفعة واحدة)',amount:111,currency:'ج.م',date:'',paid:true,notes:'عبر فون كاش'},
+        {id:'see5',title:'عربي أ. محمود — منهج أساسي (أغسطس)',amount:800,currency:'ج.م',date:'2026-08-01',paid:false,notes:'8 حصص شهريًا'}
+      ]
+    }
+  ]};
+}
+
+let state = load();
+let activeKidId = state.kids.length ? state.kids[0].id : null;
+let viewMode = 'kids'; // 'kids' | 'week'
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return defaultSeed();
+}
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function uid(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+}
+
+function resetToSeed(){
+  if(!confirm('ده هيرجّع كل البيانات للنسخة الأصلية ويمسح أي تعديلات عملتها. متأكد؟')) return;
+  state = defaultSeed();
+  activeKidId = state.kids.length ? state.kids[0].id : null;
+  save();
+  render();
+}
+
+function addKid(){
+  const name = prompt('اسم الولد/البنت؟');
+  if(!name || !name.trim()) return;
+  const stage = prompt('المرحلة الدراسية (مثلا: الصف الرابع الابتدائي)؟') || '';
+  const notes = prompt('ملاحظات (رقم الطالب، ولي الأمر، المدرسة... اختياري)؟') || '';
+  const kid = { id: uid(), name: name.trim(), stage: stage.trim(), notes: notes.trim(), subjects: [], expenses: [] };
+  state.kids.push(kid);
+  activeKidId = kid.id;
+  save();
+  render();
+}
+
+function deleteKid(id, evt){
+  evt.stopPropagation();
+  const kid = state.kids.find(k=>k.id===id);
+  if(!kid) return;
+  if(!confirm(`متأكد إنك عايز تمسح "${kid.name}" مع كل المواد والمصاريف بتاعته؟`)) return;
+  state.kids = state.kids.filter(k=>k.id!==id);
+  if(activeKidId === id){
+    activeKidId = state.kids.length ? state.kids[0].id : null;
+  }
+  save();
+  render();
+}
+
+function selectKid(id){
+  activeKidId = id;
+  render();
+}
+
+function editKidInfo(id){
+  const kid = state.kids.find(k=>k.id===id);
+  if(!kid) return;
+  const name = prompt('اسم الولد/البنت؟', kid.name);
+  if(name === null) return;
+  const stage = prompt('المرحلة الدراسية؟', kid.stage || '');
+  const notes = prompt('ملاحظات (رقم الطالب، ولي الأمر، المدرسة...)؟', kid.notes || '');
+  kid.name = name.trim() || kid.name;
+  kid.stage = (stage||'').trim();
+  kid.notes = (notes||'').trim();
+  save();
+  render();
+}
+
+// ---------- Subjects ----------
+function addSubject(kidId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const name = document.getElementById('subj-name').value.trim();
+  const teacher = document.getElementById('subj-teacher').value.trim();
+  const day = document.getElementById('subj-day').value;
+  const from = document.getElementById('subj-from').value;
+  const to = document.getElementById('subj-to').value;
+  const notes = document.getElementById('subj-notes').value.trim();
+  if(!name){ alert('لازم تكتب اسم المادة'); return; }
+  kid.subjects.push({ id: uid(), name, teacher, day, from, to, notes });
+  save();
+  render();
+}
+
+function deleteSubject(kidId, subId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  if(!confirm('تمسح المادة دي؟')) return;
+  kid.subjects = kid.subjects.filter(s=>s.id!==subId);
+  save();
+  render();
+}
+
+function editSubject(kidId, subId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const sub = kid.subjects.find(s=>s.id===subId);
+  const name = prompt('اسم المادة:', sub.name);
+  if(name===null) return;
+  const teacher = prompt('اسم المدرس/المدرسة:', sub.teacher||'');
+  const day = prompt('اليوم (مثلا: السبت والثلاثاء):', sub.day||'');
+  const from = prompt('من الساعة (مثلا 16:00):', sub.from||'');
+  const to = prompt('لحد الساعة (مثلا 17:30):', sub.to||'');
+  const notes = prompt('ملاحظات:', sub.notes||'');
+  sub.name = name.trim() || sub.name;
+  sub.teacher = (teacher||'').trim();
+  sub.day = (day||'').trim();
+  sub.from = (from||'').trim();
+  sub.to = (to||'').trim();
+  sub.notes = (notes||'').trim();
+  save();
+  render();
+}
+
+// ---------- Expenses ----------
+function addExpense(kidId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const title = document.getElementById('exp-title').value.trim();
+  const amount = parseFloat(document.getElementById('exp-amount').value);
+  const currency = document.getElementById('exp-currency').value;
+  const date = document.getElementById('exp-date').value;
+  const paid = document.getElementById('exp-paid').value === 'yes';
+  const notes = document.getElementById('exp-notes').value.trim();
+  if(!title){ alert('لازم تكتب بند المصروف (مثلا: مصاريف مدرسة، درس خصوصي...)'); return; }
+  if(isNaN(amount) || amount < 0){ alert('اكتب مبلغ صحيح'); return; }
+  kid.expenses.push({ id: uid(), title, amount, currency, date, paid, notes });
+  save();
+  render();
+}
+
+function deleteExpense(kidId, expId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  if(!confirm('تمسح المصروف ده؟')) return;
+  kid.expenses = kid.expenses.filter(e=>e.id!==expId);
+  save();
+  render();
+}
+
+function toggleExpensePaid(kidId, expId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const exp = kid.expenses.find(e=>e.id===expId);
+  exp.paid = !exp.paid;
+  save();
+  render();
+}
+
+function editExpense(kidId, expId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const exp = kid.expenses.find(e=>e.id===expId);
+  const title = prompt('بند المصروف:', exp.title);
+  if(title===null) return;
+  const amountStr = prompt('المبلغ:', exp.amount);
+  const amount = parseFloat(amountStr);
+  const currency = prompt('العملة (ج.م / د.ك / ...):', exp.currency||'ج.م');
+  const date = prompt('التاريخ (YYYY-MM-DD):', exp.date||'');
+  const notes = prompt('ملاحظات:', exp.notes||'');
+  exp.title = title.trim() || exp.title;
+  if(!isNaN(amount) && amount>=0) exp.amount = amount;
+  exp.currency = (currency||'ج.م').trim() || 'ج.م';
+  exp.date = (date||'').trim();
+  exp.notes = (notes||'').trim();
+  save();
+  render();
+}
+
+// ---------- Export / Import ----------
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'نسخة-احتياطية-متابعة-الأولاد.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.kids || !Array.isArray(data.kids)) throw new Error('صيغة غير صحيحة');
+      if(!confirm('استيراد النسخة دي هيستبدل البيانات الحالية كلها، متأكد؟')) return;
+      state = data;
+      activeKidId = state.kids.length ? state.kids[0].id : null;
+      save();
+      render();
+      alert('تم الاستيراد بنجاح');
+    }catch(err){
+      alert('الملف مش صالح: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+
+// ---------- Rendering ----------
+function esc(str){
+  const d = document.createElement('div');
+  d.textContent = str ?? '';
+  return d.innerHTML;
+}
+
+function renderKidsBar(){
+  const bar = document.getElementById('kidsBar');
+  let html = '';
+  state.kids.forEach(k=>{
+    const active = k.id === activeKidId ? 'active' : '';
+    html += `<div class="kid-tab ${active}" onclick="selectKid('${k.id}')">
+      <span>👤 ${esc(k.name)}</span>
+      <button class="del-kid" title="حذف" onclick="deleteKid('${k.id}', event)">✕</button>
+    </div>`;
+  });
+  html += `<button class="add-kid-btn" onclick="addKid()">➕ إضافة ولد</button>`;
+  bar.innerHTML = html;
+}
+
+// إجماليات لكل عملة على حدة (لأن فيه مصاريف بالجنيه ومصاريف بالدينار)
+function totalsByCurrency(expenses){
+  const map = {};
+  expenses.forEach(e=>{
+    const cur = e.currency || 'ج.م';
+    if(!map[cur]) map[cur] = {total:0, paid:0, due:0};
+    const amt = Number(e.amount)||0;
+    map[cur].total += amt;
+    if(e.paid) map[cur].paid += amt; else map[cur].due += amt;
+  });
+  return map;
+}
+function fmtTotals(map, key){
+  const parts = Object.keys(map).map(cur => `${(map[cur][key]).toLocaleString('ar-EG')} ${cur}`);
+  return parts.length ? parts.join('  +  ') : '0';
+}
+
+function renderKidContent(){
+  const container = document.getElementById('kidContent');
+  const emptyState = document.getElementById('emptyState');
+  const kid = state.kids.find(k=>k.id===activeKidId);
+
+  if(!kid){
+    container.innerHTML = '';
+    emptyState.style.display = 'block';
+    return;
+  }
+  emptyState.style.display = 'none';
+
+  // subjects table rows
+  let subRows = '';
+  if(kid.subjects.length === 0){
+    subRows = `<tr class="empty-row"><td colspan="6">لسه مفيش مواد مضافة</td></tr>`;
+  } else {
+    kid.subjects.forEach(s=>{
+      subRows += `<tr>
+        <td><strong>${esc(s.name)}</strong>${s.notes ? `<div style="font-size:.75rem;color:var(--muted)">${esc(s.notes)}</div>`:''}</td>
+        <td>${esc(s.teacher) || '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${s.day ? `<span class="day-badge">${esc(s.day)}</span>` : '—'}</td>
+        <td>${esc(s.from)||'—'}</td>
+        <td>${esc(s.to)||'—'}</td>
+        <td>
+          <button class="icon-btn no-print" title="تعديل" onclick="editSubject('${kid.id}','${s.id}')">✏️</button>
+          <button class="icon-btn danger no-print" title="حذف" onclick="deleteSubject('${kid.id}','${s.id}')">🗑️</button>
+        </td>
+      </tr>`;
+    });
+  }
+
+  // expenses rows + totals (per currency)
+  const map = totalsByCurrency(kid.expenses);
+
+  let expRows = '';
+  if(kid.expenses.length === 0){
+    expRows = `<tr class="empty-row"><td colspan="6">لسه مفيش مصاريف مضافة</td></tr>`;
+  } else {
+    kid.expenses
+      .slice()
+      .sort((a,b)=> (b.date||'').localeCompare(a.date||''))
+      .forEach(e=>{
+        expRows += `<tr>
+          <td><strong>${esc(e.title)}</strong>${e.notes ? `<div style="font-size:.75rem;color:var(--muted)">${esc(e.notes)}</div>`:''}</td>
+          <td>${(Number(e.amount)||0).toLocaleString('ar-EG')} ${esc(e.currency||'ج.م')}</td>
+          <td>${esc(e.date) || '—'}</td>
+          <td>
+            <span class="${e.paid?'status-paid':'status-due'} no-print" style="cursor:pointer" onclick="toggleExpensePaid('${kid.id}','${e.id}')">
+              ${e.paid ? '✅ مدفوع' : '⏳ لسه مستحق'}
+            </span>
+          </td>
+          <td>
+            <button class="icon-btn no-print" title="تعديل" onclick="editExpense('${kid.id}','${e.id}')">✏️</button>
+            <button class="icon-btn danger no-print" title="حذف" onclick="deleteExpense('${kid.id}','${e.id}')">🗑️</button>
+          </td>
+        </tr>`;
+      });
+  }
+
+  // currency options
+  let curOptions = CURRENCIES.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  container.innerHTML = `
+    <div class="card">
+      <h2>
+        <span>👤 ${esc(kid.name)} ${kid.stage ? `<span class="badge">${esc(kid.stage)}</span>` : ''}</span>
+        <button class="btn btn-ghost btn-sm no-print" onclick="editKidInfo('${kid.id}')">✏️ تعديل البيانات</button>
+      </h2>
+      ${kid.notes ? `<div class="kid-notes">📝 ${esc(kid.notes)}</div>` : ''}
+    </div>
+
+    <div class="card">
+      <h2>📅 الجدول الدراسي والمدرسين <span class="badge">${kid.subjects.length} مادة</span></h2>
+
+      <div class="add-form no-print">
+        <div>
+          <label>اسم المادة</label>
+          <input type="text" id="subj-name" placeholder="مثلا: رياضيات">
+        </div>
+        <div>
+          <label>اسم المدرس</label>
+          <input type="text" id="subj-teacher" placeholder="اسم المدرس/المدرسة">
+        </div>
+        <div>
+          <label>اليوم</label>
+          <select id="subj-day">
+            <option value="">اختر يوم</option>
+            <option>السبت</option><option>الأحد</option><option>الاثنين</option>
+            <option>الثلاثاء</option><option>الأربعاء</option><option>الخميس</option><option>الجمعة</option>
+            <option>السبت والثلاثاء</option><option>الأحد والأربعاء</option><option>الاثنين والخميس</option>
+          </select>
+        </div>
+        <div>
+          <label>من الساعة</label>
+          <input type="time" id="subj-from">
+        </div>
+        <div>
+          <label>لحد الساعة</label>
+          <input type="time" id="subj-to">
+        </div>
+        <div class="full">
+          <label>ملاحظات</label>
+          <input type="text" id="subj-notes" placeholder="اختياري">
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="addSubject('${kid.id}')">➕ إضافة مادة</button>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr><th>المادة</th><th>المدرس</th><th>اليوم</th><th>من</th><th>لحد</th><th class="no-print">إجراءات</th></tr>
+        </thead>
+        <tbody>${subRows}</tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>💰 المصاريف</h2>
+
+      <div class="summary-grid">
+        <div class="stat"><div class="val">${fmtTotals(map,'total')}</div><div class="lbl">إجمالي المصاريف</div></div>
+        <div class="stat paid"><div class="val">${fmtTotals(map,'paid')}</div><div class="lbl">تم دفعه</div></div>
+        <div class="stat due"><div class="val">${fmtTotals(map,'due')}</div><div class="lbl">لسه مستحق</div></div>
+      </div>
+
+      <div class="add-form no-print">
+        <div>
+          <label>بند المصروف</label>
+          <input type="text" id="exp-title" placeholder="مثلا: مصاريف الترم">
+        </div>
+        <div>
+          <label>المبلغ</label>
+          <input type="number" id="exp-amount" min="0" step="0.01" placeholder="0">
+        </div>
+        <div>
+          <label>العملة</label>
+          <select id="exp-currency">${curOptions}</select>
+        </div>
+        <div>
+          <label>التاريخ</label>
+          <input type="date" id="exp-date">
+        </div>
+        <div>
+          <label>الحالة</label>
+          <select id="exp-paid">
+            <option value="no">لسه مستحق</option>
+            <option value="yes">مدفوع</option>
+          </select>
+        </div>
+        <div class="full">
+          <label>ملاحظات</label>
+          <input type="text" id="exp-notes" placeholder="اختياري">
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="addExpense('${kid.id}')">➕ إضافة مصروف</button>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr><th>البند</th><th>المبلغ</th><th>التاريخ</th><th>الحالة</th><th class="no-print">إجراءات</th></tr>
+        </thead>
+        <tbody>${expRows}</tbody>
+      </table>
+      </div>
+    </div>
+  `;
+}
+
+// ---------- Unified weekly schedule ----------
+const WEEK_DAYS = ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'];
+const KID_COLORS = ['#3f6bd6','#c9407a','#2f8f6b','#c07a1e','#7a49c9','#c43f3a','#0f8f9f'];
+
+function kidColor(kidId){
+  const i = state.kids.findIndex(k=>k.id===kidId);
+  return KID_COLORS[(i<0?0:i) % KID_COLORS.length];
+}
+
+function parseMin(t){
+  if(!t) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(t).trim());
+  if(!m) return null;
+  return (+m[1])*60 + (+m[2]);
+}
+
+// يقرأ حقل اليوم (ممكن يكون فيه يومين: "السبت والثلاثاء")
+function daysInText(text){
+  if(!text) return [];
+  const found = [];
+  WEEK_DAYS.forEach(d=>{ if(text.includes(d)) found.push(d); });
+  if(!found.includes('الاثنين') && text.includes('الإثنين')) found.push('الاثنين');
+  return found;
+}
+
+function buildWeek(){
+  const slots = [];
+  state.kids.forEach(k=>{
+    (k.subjects||[]).forEach(s=>{
+      const days = daysInText(s.day);
+      const start = parseMin(s.from);
+      const end = parseMin(s.to);
+      days.forEach(day=>{
+        slots.push({
+          day, kidId:k.id, kidName:k.name, subId:s.id, subj:s.name, teacher:s.teacher,
+          from:s.from, to:s.to, start,
+          end: end!=null ? end : (start!=null ? start+60 : null),
+          conflict:false, conflictWith:[]
+        });
+      });
+    });
+  });
+
+  const pairs = [];
+  WEEK_DAYS.forEach(day=>{
+    const ds = slots.filter(sl=>sl.day===day && sl.start!=null);
+    for(let i=0;i<ds.length;i++){
+      for(let j=i+1;j<ds.length;j++){
+        const a=ds[i], b=ds[j];
+        // حصة مشتركة (نفس المدرس ونفس الميعاد) مش تعارض — الأولاد بيحضروها مع بعض
+        const shared = a.teacher && b.teacher &&
+                       a.teacher.trim() === b.teacher.trim() &&
+                       a.from === b.from;
+        if(!shared && a.start < b.end && b.start < a.end){ // تداخل زمني
+          a.conflict=true; b.conflict=true;
+          a.conflictWith.push(`${b.kidName} · ${b.subj}`);
+          b.conflictWith.push(`${a.kidName} · ${a.subj}`);
+          pairs.push({
+            day,
+            a:`${a.kidName} — ${a.subj} (${a.from||'؟'})`,
+            b:`${b.kidName} — ${b.subj} (${b.from||'؟'})`
+          });
+        }
+      }
+    }
+  });
+  return { slots, pairs };
+}
+
+function renderWeek(){
+  const container = document.getElementById('kidContent');
+  document.getElementById('emptyState').style.display = 'none';
+
+  if(state.kids.length === 0){
+    container.innerHTML = `<div class="card"><p style="color:var(--muted);text-align:center">مفيش ولاد أو مواد مضافة لسه.</p></div>`;
+    return;
+  }
+
+  const { slots, pairs } = buildWeek();
+
+  const legend = state.kids.map(k=>
+    `<span class="item"><span class="dot" style="background:${kidColor(k.id)}"></span>${esc(k.name)}</span>`
+  ).join('');
+
+  let banner;
+  if(pairs.length === 0){
+    banner = `<div class="card" style="border-color:var(--success)"><strong style="color:var(--success)">✅ مفيش أي تعارض في المواعيد بين الأولاد</strong></div>`;
+  } else {
+    const items = pairs.map(p=>
+      `<li style="margin-bottom:6px"><span class="day-badge">${esc(p.day)}</span> ${esc(p.a)} &nbsp;<span style="color:var(--danger-dark);font-weight:700">✕</span>&nbsp; ${esc(p.b)}</li>`
+    ).join('');
+    banner = `<div class="card" style="border-color:var(--danger);background:#fdeceb">
+      <strong style="color:var(--danger-dark)">⚠️ فيه ${pairs.length} تعارض في المواعيد:</strong>
+      <ul style="margin:10px 0 0;padding-inline-start:18px;line-height:1.7">${items}</ul>
+    </div>`;
+  }
+
+  let daysHtml = '';
+  WEEK_DAYS.forEach(day=>{
+    const ds = slots.filter(s=>s.day===day).sort((a,b)=>{
+      if(a.start==null) return 1;
+      if(b.start==null) return -1;
+      return a.start - b.start;
+    });
+    let rows;
+    if(ds.length === 0){
+      rows = `<div class="empty-day">— مفيش حصص —</div>`;
+    } else {
+      rows = ds.map(s=>{
+        const c = kidColor(s.kidId);
+        const time = s.from ? (s.from + (s.to ? ' - ' + s.to : '')) : '—';
+        return `<div class="slot ${s.conflict?'conflict':''}" style="--kidc:${c}">
+          <span class="time">🕐 ${esc(time)}</span>
+          <span class="who" style="background:${c}">${esc(s.kidName)}</span>
+          <span class="subj">${esc(s.subj)}${s.teacher?` <span class="tchr">— ${esc(s.teacher)}</span>`:''}</span>
+          ${s.conflict?`<span class="warn" title="تعارض مع: ${esc(s.conflictWith.join(' / '))}">⚠️ تعارض</span>`:''}
+          <button class="icon-btn no-print" title="تغيير الميعاد" onclick="editSubject('${s.kidId}','${s.subId}')">✏️</button>
+        </div>`;
+      }).join('');
+    }
+    daysHtml += `<div class="week-day"><h3>${esc(day)} <span class="cnt">(${ds.length} حصة)</span></h3>${rows}</div>`;
+  });
+
+  container.innerHTML = `
+    <div class="card">
+      <h2>📆 الجدول الأسبوعي الموحّد لكل الأولاد</h2>
+      <div class="legend">${legend}</div>
+    </div>
+    ${banner}
+    <div class="card">${daysHtml}</div>
+  `;
+}
+
+// ---------- View toggle ----------
+function setView(mode){
+  viewMode = mode;
+  render();
+}
+function renderViewToggle(){
+  const el = document.getElementById('viewToggle');
+  el.innerHTML = `
+    <button class="${viewMode==='kids'?'active':''}" onclick="setView('kids')">👤 حسب كل ولد</button>
+    <button class="${viewMode==='week'?'active':''}" onclick="setView('week')">📆 الجدول الأسبوعي الموحّد</button>
+  `;
+}
+
+function render(){
+  renderViewToggle();
+  if(viewMode === 'week'){
+    document.getElementById('kidsBar').style.display = 'none';
+    renderWeek();
+  } else {
+    document.getElementById('kidsBar').style.display = 'flex';
+    renderKidsBar();
+    renderKidContent();
+  }
+}
+
+render();
+</script>
+</body>
+</html>
