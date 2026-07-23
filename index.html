@@ -347,6 +347,13 @@
 
 <div class="container">
 
+  <div id="storageWarn" class="card no-print" style="display:none;border-color:var(--danger);background:#fdeceb">
+    <strong style="color:var(--danger-dark)">⚠️ التخزين التلقائي مش شغال في المتصفح ده</strong>
+    <div style="font-size:.85rem;margin-top:6px;color:var(--text)">
+      البيانات ممكن تتمسح لما تقفل. الأفضل تفتح الملف في متصفح حقيقي (Safari / Chrome) وتعمل «تصدير نسخة احتياطية» بانتظام.
+    </div>
+  </div>
+
   <div class="card reminder-card no-print" id="reminderCard"></div>
 
   <div class="view-toggle no-print" id="viewToggle"></div>
@@ -359,6 +366,8 @@
   </div>
 
   <div id="kidContent"></div>
+
+  <div class="no-print" id="saveStatus" style="text-align:center;font-size:.8rem;color:var(--muted);margin-bottom:10px"></div>
 
   <div class="toolbar no-print">
     <button class="btn btn-ghost btn-sm" onclick="resetToSeed()">↩️ استرجاع البيانات الأصلية</button>
@@ -449,10 +458,64 @@ function load(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw) return JSON.parse(raw);
   }catch(e){}
+  // لو النسخة الأساسية اتلفت، جرّب النسخة الاحتياطية
+  try{
+    const bk = localStorage.getItem(STORAGE_KEY + '-backup');
+    if(bk){
+      const parsed = JSON.parse(bk);
+      if(parsed && parsed.data && Array.isArray(parsed.data.kids)) return parsed.data;
+    }
+  }catch(e){}
   return defaultSeed();
 }
+let lastSaveOk = true;
 function save(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    // نسخة احتياطية ثانية داخل نفس التخزين (تحسّبًا لأي تلف)
+    localStorage.setItem(STORAGE_KEY + '-backup', JSON.stringify({ at: Date.now(), data: state }));
+    lastSaveOk = true;
+  }catch(e){
+    lastSaveOk = false;
+  }
+  updateSaveStatus();
+}
+
+function updateSaveStatus(){
+  const el = document.getElementById('saveStatus');
+  if(!el) return;
+  if(lastSaveOk){
+    const t = new Date().toLocaleTimeString('ar-EG');
+    el.innerHTML = `💾 <span style="color:var(--success)">اتحفظ تلقائيًا</span> — ${t}`;
+  }else{
+    el.innerHTML = `⚠️ <span style="color:var(--danger-dark)">التخزين مش شغال! اعمل «تصدير نسخة» فورًا واحفظها</span>`;
+  }
+}
+
+// اختبار توفّر التخزين + طلب تخزين دائم من المتصفح
+async function initStorage(){
+  // اطلب من المتصفح يخلّي التخزين دائم (ميتمسحش تلقائيًا)
+  try{
+    if(navigator.storage && navigator.storage.persist){
+      await navigator.storage.persist();
+    }
+  }catch(e){}
+
+  // اتأكد إن الكتابة والقراءة شغالة
+  let ok = true;
+  try{
+    const testKey = STORAGE_KEY + '-test';
+    localStorage.setItem(testKey, '1');
+    ok = localStorage.getItem(testKey) === '1';
+    localStorage.removeItem(testKey);
+  }catch(e){ ok = false; }
+
+  const warn = document.getElementById('storageWarn');
+  if(warn){
+    warn.style.display = ok ? 'none' : 'block';
+  }
+  lastSaveOk = ok;
+  updateSaveStatus();
 }
 function uid(){
   return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
@@ -1259,6 +1322,13 @@ function render(){
 
 render();
 checkReminders();
+initStorage();
+
+// حفظ إضافي عند قفل الصفحة أو الانتقال لتطبيق تاني (أمان زيادة)
+window.addEventListener('pagehide', save);
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'hidden') save();
+});
 </script>
 </body>
 </html>
