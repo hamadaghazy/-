@@ -220,6 +220,25 @@
   .status-paid{color:var(--success);font-weight:700;}
   .status-due{color:var(--danger-dark);font-weight:700;}
 
+  /* ----- grades ----- */
+  .grades{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+  .grade{
+    display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;
+    font-size:.75rem;font-weight:700;white-space:nowrap;color:#fff;
+  }
+  .grade small{font-weight:500;opacity:.9;}
+  .grade .g-del{background:none;border:none;color:#fff;opacity:.75;cursor:pointer;font-size:.85rem;line-height:1;padding:0;}
+  .grade .g-del:hover{opacity:1;}
+  .g-excellent{background:#3fa66b;}
+  .g-good{background:#3f6bd6;}
+  .g-mid{background:#d98b2b;}
+  .g-low{background:#e0524d;}
+  .g-add{
+    background:none;border:1px dashed var(--primary);color:var(--primary-dark);
+    border-radius:999px;padding:2px 9px;font-size:.75rem;font-weight:600;cursor:pointer;
+  }
+  .g-avg{font-size:.72rem;color:var(--muted);margin-inline-start:2px;}
+
   .toolbar{
     display:flex;
     gap:10px;
@@ -512,6 +531,71 @@ function editSubject(kidId, subId){
   render();
 }
 
+// ---------- Grades (درجات كل مادة) ----------
+function gradeClass(score, max){
+  const m = Number(max);
+  if(!m) return 'g-good';
+  const pct = (Number(score)/m)*100;
+  if(pct >= 85) return 'g-excellent';
+  if(pct >= 65) return 'g-good';
+  if(pct >= 50) return 'g-mid';
+  return 'g-low';
+}
+
+function gradesCell(kidId, sub){
+  const grades = sub.grades || [];
+  let html = '<div class="grades">';
+  grades.forEach(g=>{
+    const cls = gradeClass(g.score, g.max);
+    const label = g.label ? `<small>${esc(g.label)}:</small>` : '';
+    html += `<span class="grade ${cls}" title="${esc(g.label||'')}">
+      ${label}${esc(g.score)}${g.max?('/'+esc(g.max)):''}
+      <button class="g-del no-print" title="حذف الدرجة" onclick="deleteGrade('${kidId}','${sub.id}','${g.id}')">✕</button>
+    </span>`;
+  });
+  // متوسط النسبة المئوية لو فيه أكتر من درجة بنهاية عظمى
+  const withMax = grades.filter(g=>Number(g.max)>0);
+  if(withMax.length >= 2){
+    const avg = withMax.reduce((a,g)=> a + (Number(g.score)/Number(g.max))*100, 0) / withMax.length;
+    html += `<span class="g-avg">(متوسط ${avg.toFixed(0)}%)</span>`;
+  }
+  html += `<button class="g-add no-print" onclick="addGrade('${kidId}','${sub.id}')">➕ درجة</button>`;
+  html += '</div>';
+  return html;
+}
+
+function addGrade(kidId, subId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const sub = kid.subjects.find(s=>s.id===subId);
+  if(!sub.grades) sub.grades = [];
+  const label = prompt('اسم الاختبار/التقييم (مثلا: امتحان شهر أكتوبر):', '');
+  if(label === null) return;
+  const scoreStr = prompt('الدرجة اللي جابها:', '');
+  if(scoreStr === null) return;
+  const score = parseFloat(scoreStr);
+  if(isNaN(score)){ alert('اكتب درجة صحيحة'); return; }
+  const maxStr = prompt('النهاية العظمى (مثلا: 20):', '');
+  const max = parseFloat(maxStr);
+  sub.grades.push({
+    id: uid(),
+    label: (label||'').trim(),
+    score,
+    max: (!isNaN(max) && max>0) ? max : '',
+    date: new Date().toISOString().slice(0,10)
+  });
+  save();
+  render();
+}
+
+function deleteGrade(kidId, subId, gradeId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const sub = kid.subjects.find(s=>s.id===subId);
+  if(!confirm('تمسح الدرجة دي؟')) return;
+  sub.grades = (sub.grades||[]).filter(g=>g.id!==gradeId);
+  save();
+  render();
+}
+
 // ---------- Expenses ----------
 function addExpense(kidId){
   const kid = state.kids.find(k=>k.id===kidId);
@@ -649,7 +733,7 @@ function renderKidContent(){
   // subjects table rows
   let subRows = '';
   if(kid.subjects.length === 0){
-    subRows = `<tr class="empty-row"><td colspan="6">لسه مفيش مواد مضافة</td></tr>`;
+    subRows = `<tr class="empty-row"><td colspan="7">لسه مفيش مواد مضافة</td></tr>`;
   } else {
     kid.subjects.forEach(s=>{
       subRows += `<tr>
@@ -658,6 +742,7 @@ function renderKidContent(){
         <td>${s.day ? `<span class="day-badge">${esc(s.day)}</span>` : '—'}</td>
         <td>${esc(s.from)||'—'}</td>
         <td>${esc(s.to)||'—'}</td>
+        <td>${gradesCell(kid.id, s)}</td>
         <td>
           <button class="icon-btn no-print" title="تعديل" onclick="editSubject('${kid.id}','${s.id}')">✏️</button>
           <button class="icon-btn danger no-print" title="حذف" onclick="deleteSubject('${kid.id}','${s.id}')">🗑️</button>
@@ -747,7 +832,7 @@ function renderKidContent(){
       <div style="overflow-x:auto">
       <table>
         <thead>
-          <tr><th>المادة</th><th>المدرس</th><th>اليوم</th><th>من</th><th>لحد</th><th class="no-print">إجراءات</th></tr>
+          <tr><th>المادة</th><th>المدرس</th><th>اليوم</th><th>من</th><th>لحد</th><th>الدرجات</th><th class="no-print">إجراءات</th></tr>
         </thead>
         <tbody>${subRows}</tbody>
       </table>
