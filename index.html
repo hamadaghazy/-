@@ -220,6 +220,47 @@
   .status-paid{color:var(--success);font-weight:700;}
   .status-due{color:var(--danger-dark);font-weight:700;}
 
+  /* ----- session counter ----- */
+  .sess{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:.78rem;}
+  .sess-label{color:var(--muted);font-weight:600;}
+  .sess-btn{
+    width:24px;height:24px;border-radius:6px;border:1px solid var(--border);
+    background:var(--bg);cursor:pointer;font-weight:700;line-height:1;color:var(--text);
+  }
+  .sess-btn:hover{background:#e9edf6;}
+  .sess-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .sess-count{font-weight:700;min-width:40px;text-align:center;}
+  .sess-count.full{color:var(--danger-dark);}
+  .sess-bar{width:82px;height:7px;border-radius:999px;background:var(--border);overflow:hidden;}
+  .sess-bar > i{display:block;height:100%;background:var(--primary);transition:width .2s;}
+  .sess-bar.full > i{background:var(--danger);}
+  .sess-cycle{color:var(--muted);}
+  .sess-pay{
+    background:var(--danger);color:#fff;border:none;border-radius:999px;
+    padding:4px 12px;font-weight:700;cursor:pointer;font-size:.75rem;animation:payPulse 1.4s infinite;
+  }
+  .sess-pay:hover{background:var(--danger-dark);animation:none;}
+  @keyframes payPulse{0%,100%{box-shadow:0 0 0 0 rgba(224,82,77,.5)}50%{box-shadow:0 0 0 5px rgba(224,82,77,0)}}
+
+  /* ----- grades ----- */
+  .grades{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+  .grade{
+    display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;
+    font-size:.75rem;font-weight:700;white-space:nowrap;color:#fff;
+  }
+  .grade small{font-weight:500;opacity:.9;}
+  .grade .g-del{background:none;border:none;color:#fff;opacity:.75;cursor:pointer;font-size:.85rem;line-height:1;padding:0;}
+  .grade .g-del:hover{opacity:1;}
+  .g-excellent{background:#3fa66b;}
+  .g-good{background:#3f6bd6;}
+  .g-mid{background:#d98b2b;}
+  .g-low{background:#e0524d;}
+  .g-add{
+    background:none;border:1px dashed var(--primary);color:var(--primary-dark);
+    border-radius:999px;padding:2px 9px;font-size:.75rem;font-weight:600;cursor:pointer;
+  }
+  .g-avg{font-size:.72rem;color:var(--muted);margin-inline-start:2px;}
+
   .toolbar{
     display:flex;
     gap:10px;
@@ -306,6 +347,13 @@
 
 <div class="container">
 
+  <div id="storageWarn" class="card no-print" style="display:none;border-color:var(--danger);background:#fdeceb">
+    <strong style="color:var(--danger-dark)">⚠️ التخزين التلقائي مش شغال في المتصفح ده</strong>
+    <div style="font-size:.85rem;margin-top:6px;color:var(--text)">
+      البيانات ممكن تتمسح لما تقفل. الأفضل تفتح الملف في متصفح حقيقي (Safari / Chrome) وتعمل «تصدير نسخة احتياطية» بانتظام.
+    </div>
+  </div>
+
   <div class="card reminder-card no-print" id="reminderCard"></div>
 
   <div class="view-toggle no-print" id="viewToggle"></div>
@@ -318,6 +366,8 @@
   </div>
 
   <div id="kidContent"></div>
+
+  <div class="no-print" id="saveStatus" style="text-align:center;font-size:.8rem;color:var(--muted);margin-bottom:10px"></div>
 
   <div class="toolbar no-print">
     <button class="btn btn-ghost btn-sm" onclick="resetToSeed()">↩️ استرجاع البيانات الأصلية</button>
@@ -408,10 +458,64 @@ function load(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw) return JSON.parse(raw);
   }catch(e){}
+  // لو النسخة الأساسية اتلفت، جرّب النسخة الاحتياطية
+  try{
+    const bk = localStorage.getItem(STORAGE_KEY + '-backup');
+    if(bk){
+      const parsed = JSON.parse(bk);
+      if(parsed && parsed.data && Array.isArray(parsed.data.kids)) return parsed.data;
+    }
+  }catch(e){}
   return defaultSeed();
 }
+let lastSaveOk = true;
 function save(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    // نسخة احتياطية ثانية داخل نفس التخزين (تحسّبًا لأي تلف)
+    localStorage.setItem(STORAGE_KEY + '-backup', JSON.stringify({ at: Date.now(), data: state }));
+    lastSaveOk = true;
+  }catch(e){
+    lastSaveOk = false;
+  }
+  updateSaveStatus();
+}
+
+function updateSaveStatus(){
+  const el = document.getElementById('saveStatus');
+  if(!el) return;
+  if(lastSaveOk){
+    const t = new Date().toLocaleTimeString('ar-EG');
+    el.innerHTML = `💾 <span style="color:var(--success)">اتحفظ تلقائيًا</span> — ${t}`;
+  }else{
+    el.innerHTML = `⚠️ <span style="color:var(--danger-dark)">التخزين مش شغال! اعمل «تصدير نسخة» فورًا واحفظها</span>`;
+  }
+}
+
+// اختبار توفّر التخزين + طلب تخزين دائم من المتصفح
+async function initStorage(){
+  // اطلب من المتصفح يخلّي التخزين دائم (ميتمسحش تلقائيًا)
+  try{
+    if(navigator.storage && navigator.storage.persist){
+      await navigator.storage.persist();
+    }
+  }catch(e){}
+
+  // اتأكد إن الكتابة والقراءة شغالة
+  let ok = true;
+  try{
+    const testKey = STORAGE_KEY + '-test';
+    localStorage.setItem(testKey, '1');
+    ok = localStorage.getItem(testKey) === '1';
+    localStorage.removeItem(testKey);
+  }catch(e){ ok = false; }
+
+  const warn = document.getElementById('storageWarn');
+  if(warn){
+    warn.style.display = ok ? 'none' : 'block';
+  }
+  lastSaveOk = ok;
+  updateSaveStatus();
 }
 function uid(){
   return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
@@ -502,12 +606,134 @@ function editSubject(kidId, subId){
   const from = prompt('من الساعة (مثلا 16:00):', sub.from||'');
   const to = prompt('لحد الساعة (مثلا 17:30):', sub.to||'');
   const notes = prompt('ملاحظات:', sub.notes||'');
+  const target = prompt('عدد الحصص في الدورة قبل الدفع (افتراضي 8):', Number(sub.sessionTarget)||8);
   sub.name = name.trim() || sub.name;
   sub.teacher = (teacher||'').trim();
   sub.day = (day||'').trim();
   sub.from = (from||'').trim();
   sub.to = (to||'').trim();
   sub.notes = (notes||'').trim();
+  const t = parseInt(target,10);
+  if(!isNaN(t) && t>0) sub.sessionTarget = t;
+  save();
+  render();
+}
+
+// ---------- Session counter (عداد الحصص + الدفع والتجديد) ----------
+function getSub(kidId, subId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  return kid ? kid.subjects.find(s=>s.id===subId) : null;
+}
+
+function sessionWidget(kidId, s){
+  const target = Number(s.sessionTarget) || 8;
+  const count = Number(s.sessionCount) || 0;
+  const cycle = Number(s.cyclesDone) || 0;
+  const full = count >= target;
+  const pct = Math.min(100, Math.round(count / target * 100));
+  let html = `<div class="sess">
+    <span class="sess-label">الحصص:</span>
+    <button class="sess-btn no-print" title="ناقص حصة" onclick="decSession('${kidId}','${s.id}')" ${count<=0?'disabled':''}>−</button>
+    <span class="sess-count ${full?'full':''}">${count}/${target}</span>
+    <button class="sess-btn no-print" title="حضر حصة" onclick="incSession('${kidId}','${s.id}')" ${full?'disabled':''}>+</button>
+    <span class="sess-bar ${full?'full':''}"><i style="width:${pct}%"></i></span>`;
+  if(cycle > 0) html += `<span class="sess-cycle">دورة #${cycle+1}</span>`;
+  if(full) html += `<button class="sess-pay no-print" onclick="renewSession('${kidId}','${s.id}')">💰 الدفع مستحق — سدّد وجدّد</button>`;
+  return html + '</div>';
+}
+
+function incSession(kidId, subId){
+  const sub = getSub(kidId, subId);
+  if(!sub) return;
+  const target = Number(sub.sessionTarget) || 8;
+  const count = Number(sub.sessionCount) || 0;
+  sub.sessionTarget = target;
+  if(count < target) sub.sessionCount = count + 1;
+  save();
+  render();
+}
+
+function decSession(kidId, subId){
+  const sub = getSub(kidId, subId);
+  if(!sub) return;
+  const count = Number(sub.sessionCount) || 0;
+  if(count > 0) sub.sessionCount = count - 1;
+  save();
+  render();
+}
+
+function renewSession(kidId, subId){
+  const sub = getSub(kidId, subId);
+  if(!sub) return;
+  const target = Number(sub.sessionTarget) || 8;
+  if(!confirm(`تأكيد إن الدفع اتم لـ "${sub.name}"؟ العداد هيرجع صفر وتبدأ دورة جديدة (${target} حصص).`)) return;
+  sub.cyclesDone = (Number(sub.cyclesDone) || 0) + 1;
+  sub.sessionCount = 0;
+  save();
+  render();
+}
+
+// ---------- Grades (درجات كل مادة) ----------
+function gradeClass(score, max){
+  const m = Number(max);
+  if(!m) return 'g-good';
+  const pct = (Number(score)/m)*100;
+  if(pct >= 85) return 'g-excellent';
+  if(pct >= 65) return 'g-good';
+  if(pct >= 50) return 'g-mid';
+  return 'g-low';
+}
+
+function gradesCell(kidId, sub){
+  const grades = sub.grades || [];
+  let html = '<div class="grades">';
+  grades.forEach(g=>{
+    const cls = gradeClass(g.score, g.max);
+    const label = g.label ? `<small>${esc(g.label)}:</small>` : '';
+    html += `<span class="grade ${cls}" title="${esc(g.label||'')}">
+      ${label}${esc(g.score)}${g.max?('/'+esc(g.max)):''}
+      <button class="g-del no-print" title="حذف الدرجة" onclick="deleteGrade('${kidId}','${sub.id}','${g.id}')">✕</button>
+    </span>`;
+  });
+  // متوسط النسبة المئوية لو فيه أكتر من درجة بنهاية عظمى
+  const withMax = grades.filter(g=>Number(g.max)>0);
+  if(withMax.length >= 2){
+    const avg = withMax.reduce((a,g)=> a + (Number(g.score)/Number(g.max))*100, 0) / withMax.length;
+    html += `<span class="g-avg">(متوسط ${avg.toFixed(0)}%)</span>`;
+  }
+  html += `<button class="g-add no-print" onclick="addGrade('${kidId}','${sub.id}')">➕ درجة</button>`;
+  html += '</div>';
+  return html;
+}
+
+function addGrade(kidId, subId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const sub = kid.subjects.find(s=>s.id===subId);
+  if(!sub.grades) sub.grades = [];
+  const label = prompt('اسم الاختبار/التقييم (مثلا: امتحان شهر أكتوبر):', '');
+  if(label === null) return;
+  const scoreStr = prompt('الدرجة اللي جابها:', '');
+  if(scoreStr === null) return;
+  const score = parseFloat(scoreStr);
+  if(isNaN(score)){ alert('اكتب درجة صحيحة'); return; }
+  const maxStr = prompt('النهاية العظمى (مثلا: 20):', '');
+  const max = parseFloat(maxStr);
+  sub.grades.push({
+    id: uid(),
+    label: (label||'').trim(),
+    score,
+    max: (!isNaN(max) && max>0) ? max : '',
+    date: new Date().toISOString().slice(0,10)
+  });
+  save();
+  render();
+}
+
+function deleteGrade(kidId, subId, gradeId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const sub = kid.subjects.find(s=>s.id===subId);
+  if(!confirm('تمسح الدرجة دي؟')) return;
+  sub.grades = (sub.grades||[]).filter(g=>g.id!==gradeId);
   save();
   render();
 }
@@ -649,15 +875,16 @@ function renderKidContent(){
   // subjects table rows
   let subRows = '';
   if(kid.subjects.length === 0){
-    subRows = `<tr class="empty-row"><td colspan="6">لسه مفيش مواد مضافة</td></tr>`;
+    subRows = `<tr class="empty-row"><td colspan="7">لسه مفيش مواد مضافة</td></tr>`;
   } else {
     kid.subjects.forEach(s=>{
       subRows += `<tr>
-        <td><strong>${esc(s.name)}</strong>${s.notes ? `<div style="font-size:.75rem;color:var(--muted)">${esc(s.notes)}</div>`:''}</td>
+        <td><strong>${esc(s.name)}</strong>${s.notes ? `<div style="font-size:.75rem;color:var(--muted)">${esc(s.notes)}</div>`:''}${sessionWidget(kid.id, s)}</td>
         <td>${esc(s.teacher) || '<span style="color:var(--muted)">—</span>'}</td>
         <td>${s.day ? `<span class="day-badge">${esc(s.day)}</span>` : '—'}</td>
         <td>${esc(s.from)||'—'}</td>
         <td>${esc(s.to)||'—'}</td>
+        <td>${gradesCell(kid.id, s)}</td>
         <td>
           <button class="icon-btn no-print" title="تعديل" onclick="editSubject('${kid.id}','${s.id}')">✏️</button>
           <button class="icon-btn danger no-print" title="حذف" onclick="deleteSubject('${kid.id}','${s.id}')">🗑️</button>
@@ -747,7 +974,7 @@ function renderKidContent(){
       <div style="overflow-x:auto">
       <table>
         <thead>
-          <tr><th>المادة</th><th>المدرس</th><th>اليوم</th><th>من</th><th>لحد</th><th class="no-print">إجراءات</th></tr>
+          <tr><th>المادة</th><th>المدرس</th><th>اليوم</th><th>من</th><th>لحد</th><th>الدرجات</th><th class="no-print">إجراءات</th></tr>
         </thead>
         <tbody>${subRows}</tbody>
       </table>
@@ -1095,6 +1322,13 @@ function render(){
 
 render();
 checkReminders();
+initStorage();
+
+// حفظ إضافي عند قفل الصفحة أو الانتقال لتطبيق تاني (أمان زيادة)
+window.addEventListener('pagehide', save);
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'hidden') save();
+});
 </script>
 </body>
 </html>
