@@ -220,6 +220,28 @@
   .status-paid{color:var(--success);font-weight:700;}
   .status-due{color:var(--danger-dark);font-weight:700;}
 
+  /* ----- session counter ----- */
+  .sess{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:.78rem;}
+  .sess-label{color:var(--muted);font-weight:600;}
+  .sess-btn{
+    width:24px;height:24px;border-radius:6px;border:1px solid var(--border);
+    background:var(--bg);cursor:pointer;font-weight:700;line-height:1;color:var(--text);
+  }
+  .sess-btn:hover{background:#e9edf6;}
+  .sess-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .sess-count{font-weight:700;min-width:40px;text-align:center;}
+  .sess-count.full{color:var(--danger-dark);}
+  .sess-bar{width:82px;height:7px;border-radius:999px;background:var(--border);overflow:hidden;}
+  .sess-bar > i{display:block;height:100%;background:var(--primary);transition:width .2s;}
+  .sess-bar.full > i{background:var(--danger);}
+  .sess-cycle{color:var(--muted);}
+  .sess-pay{
+    background:var(--danger);color:#fff;border:none;border-radius:999px;
+    padding:4px 12px;font-weight:700;cursor:pointer;font-size:.75rem;animation:payPulse 1.4s infinite;
+  }
+  .sess-pay:hover{background:var(--danger-dark);animation:none;}
+  @keyframes payPulse{0%,100%{box-shadow:0 0 0 0 rgba(224,82,77,.5)}50%{box-shadow:0 0 0 5px rgba(224,82,77,0)}}
+
   /* ----- grades ----- */
   .grades{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
   .grade{
@@ -521,12 +543,69 @@ function editSubject(kidId, subId){
   const from = prompt('من الساعة (مثلا 16:00):', sub.from||'');
   const to = prompt('لحد الساعة (مثلا 17:30):', sub.to||'');
   const notes = prompt('ملاحظات:', sub.notes||'');
+  const target = prompt('عدد الحصص في الدورة قبل الدفع (افتراضي 8):', Number(sub.sessionTarget)||8);
   sub.name = name.trim() || sub.name;
   sub.teacher = (teacher||'').trim();
   sub.day = (day||'').trim();
   sub.from = (from||'').trim();
   sub.to = (to||'').trim();
   sub.notes = (notes||'').trim();
+  const t = parseInt(target,10);
+  if(!isNaN(t) && t>0) sub.sessionTarget = t;
+  save();
+  render();
+}
+
+// ---------- Session counter (عداد الحصص + الدفع والتجديد) ----------
+function getSub(kidId, subId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  return kid ? kid.subjects.find(s=>s.id===subId) : null;
+}
+
+function sessionWidget(kidId, s){
+  const target = Number(s.sessionTarget) || 8;
+  const count = Number(s.sessionCount) || 0;
+  const cycle = Number(s.cyclesDone) || 0;
+  const full = count >= target;
+  const pct = Math.min(100, Math.round(count / target * 100));
+  let html = `<div class="sess">
+    <span class="sess-label">الحصص:</span>
+    <button class="sess-btn no-print" title="ناقص حصة" onclick="decSession('${kidId}','${s.id}')" ${count<=0?'disabled':''}>−</button>
+    <span class="sess-count ${full?'full':''}">${count}/${target}</span>
+    <button class="sess-btn no-print" title="حضر حصة" onclick="incSession('${kidId}','${s.id}')" ${full?'disabled':''}>+</button>
+    <span class="sess-bar ${full?'full':''}"><i style="width:${pct}%"></i></span>`;
+  if(cycle > 0) html += `<span class="sess-cycle">دورة #${cycle+1}</span>`;
+  if(full) html += `<button class="sess-pay no-print" onclick="renewSession('${kidId}','${s.id}')">💰 الدفع مستحق — سدّد وجدّد</button>`;
+  return html + '</div>';
+}
+
+function incSession(kidId, subId){
+  const sub = getSub(kidId, subId);
+  if(!sub) return;
+  const target = Number(sub.sessionTarget) || 8;
+  const count = Number(sub.sessionCount) || 0;
+  sub.sessionTarget = target;
+  if(count < target) sub.sessionCount = count + 1;
+  save();
+  render();
+}
+
+function decSession(kidId, subId){
+  const sub = getSub(kidId, subId);
+  if(!sub) return;
+  const count = Number(sub.sessionCount) || 0;
+  if(count > 0) sub.sessionCount = count - 1;
+  save();
+  render();
+}
+
+function renewSession(kidId, subId){
+  const sub = getSub(kidId, subId);
+  if(!sub) return;
+  const target = Number(sub.sessionTarget) || 8;
+  if(!confirm(`تأكيد إن الدفع اتم لـ "${sub.name}"؟ العداد هيرجع صفر وتبدأ دورة جديدة (${target} حصص).`)) return;
+  sub.cyclesDone = (Number(sub.cyclesDone) || 0) + 1;
+  sub.sessionCount = 0;
   save();
   render();
 }
@@ -737,7 +816,7 @@ function renderKidContent(){
   } else {
     kid.subjects.forEach(s=>{
       subRows += `<tr>
-        <td><strong>${esc(s.name)}</strong>${s.notes ? `<div style="font-size:.75rem;color:var(--muted)">${esc(s.notes)}</div>`:''}</td>
+        <td><strong>${esc(s.name)}</strong>${s.notes ? `<div style="font-size:.75rem;color:var(--muted)">${esc(s.notes)}</div>`:''}${sessionWidget(kid.id, s)}</td>
         <td>${esc(s.teacher) || '<span style="color:var(--muted)">—</span>'}</td>
         <td>${s.day ? `<span class="day-badge">${esc(s.day)}</span>` : '—'}</td>
         <td>${esc(s.from)||'—'}</td>
