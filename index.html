@@ -231,9 +231,15 @@
   .sess-btn:disabled{opacity:.4;cursor:not-allowed;}
   .sess-count{font-weight:700;min-width:40px;text-align:center;}
   .sess-count.full{color:var(--danger-dark);}
-  .sess-bar{width:82px;height:7px;border-radius:999px;background:var(--border);overflow:hidden;}
-  .sess-bar > i{display:block;height:100%;background:var(--primary);transition:width .2s;}
-  .sess-bar.full > i{background:var(--danger);}
+  .sess-bar{width:82px;height:7px;border-radius:999px;background:var(--border);overflow:hidden;display:flex;}
+  .sess-bar > i{display:block;height:100%;transition:width .2s;}
+  .sess-bar .seg-att{background:var(--primary);}
+  .sess-bar .seg-miss{background:#e0a020;}
+  .sess-bar.full .seg-att{background:var(--danger);}
+  .sess-sub{display:inline-flex;align-items:center;gap:4px;color:var(--muted);}
+  .sess-sub b{color:var(--text);min-width:12px;text-align:center;}
+  .sess-sub.miss{color:#b9791a;}
+  .sess-sub.miss b{color:#b9791a;}
   .sess-cycle{color:var(--muted);}
   .sess-pay{
     background:var(--danger);color:#fff;border:none;border-radius:999px;
@@ -298,6 +304,37 @@
   }
   .toast .t-close{margin-inline-start:auto;background:none;border:none;color:#fff;cursor:pointer;font-size:1.1rem;line-height:1;}
   @keyframes toastIn{from{transform:translateY(-12px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+  /* ----- search & filter ----- */
+  .filter-bar{
+    display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;
+  }
+  .filter-bar input[type=text]{flex:1;min-width:170px;}
+  .filter-bar select{width:auto;min-width:120px;}
+
+  /* ----- today's lessons ----- */
+  #todayCard h2{align-items:center;}
+  .today-day-sel{width:auto;min-width:130px;font-weight:600;}
+  .today-list{display:flex;flex-direction:column;gap:7px;}
+  .today-slot{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:10px 12px;border-radius:10px;border:1px solid var(--border);
+    background:#fff;border-inline-start:5px solid var(--kidc,#ccc);
+  }
+  .today-slot .time{font-weight:700;min-width:96px;font-size:.9rem;}
+  .today-slot .who{font-size:.75rem;color:#fff;padding:2px 10px;border-radius:999px;white-space:nowrap;}
+  .today-slot .subj{font-weight:600;flex:1;min-width:120px;}
+  .today-slot .tchr{font-size:.8rem;color:var(--muted);font-weight:400;}
+  .today-slot.past{opacity:.5;}
+  .today-slot.next{border-color:var(--primary);box-shadow:0 0 0 2px rgba(63,107,214,.18);}
+  .t-tag{margin-inline-start:auto;font-size:.72rem;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap;}
+  .t-tag.next{background:var(--primary);color:#fff;}
+  .t-tag.done{background:var(--bg);color:var(--muted);}
+  .week-day.is-today > h3{color:var(--primary-dark);}
+  .today-pill{
+    background:var(--primary);color:#fff;font-size:.7rem;font-weight:700;
+    padding:2px 9px;border-radius:999px;
+  }
 
   /* ----- expense charts ----- */
   .cur-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
@@ -402,6 +439,8 @@
   </div>
 
   <div class="card reminder-card no-print" id="reminderCard"></div>
+
+  <div class="card no-print" id="todayCard"></div>
 
   <div class="view-toggle no-print" id="viewToggle"></div>
 
@@ -675,16 +714,27 @@ function getSub(kidId, subId){
 
 function sessionWidget(kidId, s){
   const target = Number(s.sessionTarget) || 8;
-  const count = Number(s.sessionCount) || 0;
+  const attended = Number(s.sessionCount) || 0;
+  const missed = Number(s.missedCount) || 0;
+  const done = attended + missed;
   const cycle = Number(s.cyclesDone) || 0;
-  const full = count >= target;
-  const pct = Math.min(100, Math.round(count / target * 100));
+  const full = done >= target;
+  const attPct = Math.min(100, Math.round(attended / target * 100));
+  const missPct = Math.min(100 - attPct, Math.round(missed / target * 100));
   let html = `<div class="sess">
     <span class="sess-label">الحصص:</span>
-    <button class="sess-btn no-print" title="ناقص حصة" onclick="decSession('${kidId}','${s.id}')" ${count<=0?'disabled':''}>−</button>
-    <span class="sess-count ${full?'full':''}">${count}/${target}</span>
-    <button class="sess-btn no-print" title="حضر حصة" onclick="incSession('${kidId}','${s.id}')" ${full?'disabled':''}>+</button>
-    <span class="sess-bar ${full?'full':''}"><i style="width:${pct}%"></i></span>`;
+    <span class="sess-count ${full?'full':''}">${done}/${target}</span>
+    <span class="sess-bar ${full?'full':''}"><i class="seg-att" style="width:${attPct}%"></i><i class="seg-miss" style="width:${missPct}%"></i></span>
+    <span class="sess-sub no-print">حضر:
+      <button class="sess-btn" title="ناقص حضور" onclick="decSession('${kidId}','${s.id}')" ${attended<=0?'disabled':''}>−</button>
+      <b>${attended}</b>
+      <button class="sess-btn" title="حضر حصة" onclick="incSession('${kidId}','${s.id}')" ${full?'disabled':''}>+</button>
+    </span>
+    <span class="sess-sub miss no-print">فايتة:
+      <button class="sess-btn" title="ناقص فايتة" onclick="decMissed('${kidId}','${s.id}')" ${missed<=0?'disabled':''}>−</button>
+      <b>${missed}</b>
+      <button class="sess-btn" title="حصة فايتة (غياب)" onclick="incMissed('${kidId}','${s.id}')" ${full?'disabled':''}>+</button>
+    </span>`;
   if(cycle > 0) html += `<span class="sess-cycle">دورة #${cycle+1}</span>`;
   if(full) html += `<button class="sess-pay no-print" onclick="renewSession('${kidId}','${s.id}')">💰 الدفع مستحق — سدّد وجدّد</button>`;
   return html + '</div>';
@@ -694,9 +744,10 @@ function incSession(kidId, subId){
   const sub = getSub(kidId, subId);
   if(!sub) return;
   const target = Number(sub.sessionTarget) || 8;
-  const count = Number(sub.sessionCount) || 0;
+  const att = Number(sub.sessionCount) || 0;
+  const miss = Number(sub.missedCount) || 0;
   sub.sessionTarget = target;
-  if(count < target) sub.sessionCount = count + 1;
+  if(att + miss < target) sub.sessionCount = att + 1;
   save();
   render();
 }
@@ -704,8 +755,30 @@ function incSession(kidId, subId){
 function decSession(kidId, subId){
   const sub = getSub(kidId, subId);
   if(!sub) return;
-  const count = Number(sub.sessionCount) || 0;
-  if(count > 0) sub.sessionCount = count - 1;
+  const att = Number(sub.sessionCount) || 0;
+  if(att > 0) sub.sessionCount = att - 1;
+  save();
+  render();
+}
+
+// حصة فايتة (غياب) — بتتحسب ضمن الدورة زي الحضور لكن متميّزة
+function incMissed(kidId, subId){
+  const sub = getSub(kidId, subId);
+  if(!sub) return;
+  const target = Number(sub.sessionTarget) || 8;
+  const att = Number(sub.sessionCount) || 0;
+  const miss = Number(sub.missedCount) || 0;
+  sub.sessionTarget = target;
+  if(att + miss < target) sub.missedCount = miss + 1;
+  save();
+  render();
+}
+
+function decMissed(kidId, subId){
+  const sub = getSub(kidId, subId);
+  if(!sub) return;
+  const miss = Number(sub.missedCount) || 0;
+  if(miss > 0) sub.missedCount = miss - 1;
   save();
   render();
 }
@@ -714,9 +787,10 @@ function renewSession(kidId, subId){
   const sub = getSub(kidId, subId);
   if(!sub) return;
   const target = Number(sub.sessionTarget) || 8;
-  if(!confirm(`تأكيد إن الدفع اتم لـ "${sub.name}"؟ العداد هيرجع صفر وتبدأ دورة جديدة (${target} حصص).`)) return;
+  if(!confirm(`تأكيد إن الدفع اتم لـ "${sub.name}"؟ العدادات هترجع صفر وتبدأ دورة جديدة (${target} حصص).`)) return;
   sub.cyclesDone = (Number(sub.cyclesDone) || 0) + 1;
   sub.sessionCount = 0;
+  sub.missedCount = 0;
   save();
   render();
 }
@@ -876,6 +950,54 @@ function esc(str){
   d.textContent = str ?? '';
   return d.innerHTML;
 }
+function escAttr(str){
+  return esc(str).replace(/"/g,'&quot;');
+}
+
+// حالة البحث والفلترة داخل شاشة كل ولد
+let kidFilter = { q:'', day:'', status:'' };
+function onKidFilter(){
+  const qEl = document.getElementById('kf-q');
+  const dEl = document.getElementById('kf-day');
+  const sEl = document.getElementById('kf-status');
+  kidFilter.q = qEl ? qEl.value.trim().toLowerCase() : '';
+  kidFilter.day = dEl ? dEl.value : '';
+  kidFilter.status = sEl ? sEl.value : '';
+  applyKidFilters();
+}
+function clearKidFilter(){
+  kidFilter = { q:'', day:'', status:'' };
+  const qEl = document.getElementById('kf-q'); if(qEl) qEl.value='';
+  const dEl = document.getElementById('kf-day'); if(dEl) dEl.value='';
+  const sEl = document.getElementById('kf-status'); if(sEl) sEl.value='';
+  applyKidFilters();
+}
+function applyKidFilters(){
+  const q = kidFilter.q, day = kidFilter.day, status = kidFilter.status;
+  // المواد
+  let subShown = 0;
+  document.querySelectorAll('#subjTbody tr[data-row]').forEach(tr=>{
+    const txt = (tr.getAttribute('data-search')||'');
+    const rowDay = (tr.getAttribute('data-day')||'');
+    const ok = (!q || txt.includes(q)) && (!day || rowDay.includes(day));
+    tr.style.display = ok ? '' : 'none';
+    if(ok) subShown++;
+  });
+  const subEmpty = document.getElementById('subjNoRes');
+  if(subEmpty) subEmpty.style.display = subShown ? 'none' : '';
+  // المصاريف
+  let expShown = 0;
+  document.querySelectorAll('#expTbody tr[data-row]').forEach(tr=>{
+    const txt = (tr.getAttribute('data-search')||'');
+    const paid = tr.getAttribute('data-paid') === '1';
+    const okStatus = !status || (status==='paid' ? paid : !paid);
+    const ok = (!q || txt.includes(q)) && okStatus;
+    tr.style.display = ok ? '' : 'none';
+    if(ok) expShown++;
+  });
+  const expEmpty = document.getElementById('expNoRes');
+  if(expEmpty) expEmpty.style.display = expShown ? 'none' : '';
+}
 
 function renderKidsBar(){
   const bar = document.getElementById('kidsBar');
@@ -926,7 +1048,8 @@ function renderKidContent(){
     subRows = `<tr class="empty-row"><td colspan="7">لسه مفيش مواد مضافة</td></tr>`;
   } else {
     kid.subjects.forEach(s=>{
-      subRows += `<tr>
+      const sSearch = escAttr(((s.name||'')+' '+(s.teacher||'')+' '+(s.notes||'')+' '+(s.day||'')).toLowerCase());
+      subRows += `<tr data-row data-search="${sSearch}" data-day="${escAttr(s.day||'')}">
         <td><strong>${esc(s.name)}</strong>${s.notes ? `<div style="font-size:.75rem;color:var(--muted)">${esc(s.notes)}</div>`:''}${sessionWidget(kid.id, s)}</td>
         <td>${esc(s.teacher) || '<span style="color:var(--muted)">—</span>'}</td>
         <td>${s.day ? `<span class="day-badge">${esc(s.day)}</span>` : '—'}</td>
@@ -952,7 +1075,8 @@ function renderKidContent(){
       .slice()
       .sort((a,b)=> (b.date||'').localeCompare(a.date||''))
       .forEach(e=>{
-        expRows += `<tr>
+        const eSearch = escAttr(((e.title||'')+' '+(e.notes||'')+' '+(e.currency||'')).toLowerCase());
+        expRows += `<tr data-row data-search="${eSearch}" data-paid="${e.paid?1:0}">
           <td><strong>${esc(e.title)}</strong>${e.notes ? `<div style="font-size:.75rem;color:var(--muted)">${esc(e.notes)}</div>`:''}</td>
           <td>${(Number(e.amount)||0).toLocaleString('ar-EG')} ${esc(e.currency||'ج.م')}</td>
           <td>${esc(e.date) || '—'}</td>
@@ -983,6 +1107,21 @@ function renderKidContent(){
 
     <div class="card">
       <h2>📅 الجدول الدراسي والمدرسين <span class="badge">${kid.subjects.length} مادة</span></h2>
+
+      <div class="filter-bar no-print">
+        <input type="text" id="kf-q" placeholder="🔍 ابحث في المواد والمصاريف..." value="${escAttr(kidFilter.q)}" oninput="onKidFilter()">
+        <select id="kf-day" onchange="onKidFilter()" title="فلترة المواد باليوم">
+          <option value="">كل الأيام</option>
+          <option>السبت</option><option>الأحد</option><option>الاثنين</option>
+          <option>الثلاثاء</option><option>الأربعاء</option><option>الخميس</option><option>الجمعة</option>
+        </select>
+        <select id="kf-status" onchange="onKidFilter()" title="فلترة المصاريف بالحالة">
+          <option value="">كل المصاريف</option>
+          <option value="paid">مدفوع</option>
+          <option value="due">مستحق</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="clearKidFilter()">مسح</button>
+      </div>
 
       <div class="add-form no-print">
         <div>
@@ -1024,7 +1163,9 @@ function renderKidContent(){
         <thead>
           <tr><th>المادة</th><th>المدرس</th><th>اليوم</th><th>من</th><th>لحد</th><th>الدرجات</th><th class="no-print">إجراءات</th></tr>
         </thead>
-        <tbody>${subRows}</tbody>
+        <tbody id="subjTbody">${subRows}
+          <tr id="subjNoRes" class="empty-row" style="display:none"><td colspan="7">مفيش مواد مطابقة للبحث</td></tr>
+        </tbody>
       </table>
       </div>
     </div>
@@ -1076,11 +1217,15 @@ function renderKidContent(){
         <thead>
           <tr><th>البند</th><th>المبلغ</th><th>التاريخ</th><th>الحالة</th><th class="no-print">إجراءات</th></tr>
         </thead>
-        <tbody>${expRows}</tbody>
+        <tbody id="expTbody">${expRows}
+          <tr id="expNoRes" class="empty-row" style="display:none"><td colspan="6">مفيش مصاريف مطابقة للبحث</td></tr>
+        </tbody>
       </table>
       </div>
     </div>
   `;
+
+  applyKidFilters(); // إعادة تطبيق البحث/الفلترة بعد إعادة الرسم
 }
 
 // ---------- Unified weekly schedule ----------
@@ -1090,6 +1235,67 @@ const KID_COLORS = ['#3f6bd6','#c9407a','#2f8f6b','#c07a1e','#7a49c9','#c43f3a',
 function kidColor(kidId){
   const i = state.kids.findIndex(k=>k.id===kidId);
   return KID_COLORS[(i<0?0:i) % KID_COLORS.length];
+}
+
+// ---------- Today's lessons (حصص اليوم) ----------
+let selectedDay = null;
+function todayDayName(){
+  const gd = new Date().getDay();
+  return WEEK_DAYS.find(d => AR_DAY_INDEX[d] === gd) || 'السبت';
+}
+function setSelectedDay(d){ selectedDay = d; renderTodayCard(); }
+
+function renderTodayCard(){
+  const el = document.getElementById('todayCard');
+  if(!el) return;
+  const today = todayDayName();
+  if(selectedDay === null || !WEEK_DAYS.includes(selectedDay)) selectedDay = today;
+
+  const { slots } = buildWeek();
+  const daySlots = slots.filter(s => s.day === selectedDay).sort((a,b)=>{
+    if(a.start==null) return 1;
+    if(b.start==null) return -1;
+    return a.start - b.start;
+  });
+
+  const isToday = selectedDay === today;
+  const nowMin = isToday ? (new Date().getHours()*60 + new Date().getMinutes()) : null;
+  let nextMarked = false;
+
+  const daySel = WEEK_DAYS.map(d =>
+    `<option value="${d}" ${d===selectedDay?'selected':''}>${d}${d===today?' (النهاردة)':''}</option>`
+  ).join('');
+
+  let rows;
+  if(daySlots.length === 0){
+    rows = `<div class="empty-day">مفيش حصص يوم ${esc(selectedDay)} 🎉</div>`;
+  } else {
+    rows = daySlots.map(s=>{
+      const c = kidColor(s.kidId);
+      const time = s.from ? (s.from + (s.to ? ' - ' + s.to : '')) : '—';
+      let cls = 'today-slot';
+      let badge = '';
+      if(nowMin != null && s.start != null){
+        const endM = (s.end != null) ? s.end : s.start + 60;
+        if(endM <= nowMin){ cls += ' past'; badge = '<span class="t-tag done">خلصت</span>'; }
+        else if(!nextMarked){ cls += ' next'; nextMarked = true; badge = '<span class="t-tag next">الجاية</span>'; }
+      }
+      return `<div class="${cls}" style="--kidc:${c}">
+        <span class="time">🕐 ${esc(time)}</span>
+        <span class="who" style="background:${c}">${esc(s.kidName)}</span>
+        <span class="subj">${esc(s.subj)}${s.teacher?` <span class="tchr">— ${esc(s.teacher)}</span>`:''}</span>
+        ${badge}
+      </div>`;
+    }).join('');
+  }
+
+  el.innerHTML = `
+    <h2 style="margin-bottom:10px">
+      <span>📌 حصص اليوم <span class="badge">${daySlots.length} حصة</span></span>
+      <select class="today-day-sel no-print" onchange="setSelectedDay(this.value)">${daySel}</select>
+    </h2>
+    <div class="today-list">${rows}</div>
+  `;
 }
 
 function parseMin(t){
@@ -1203,7 +1409,8 @@ function renderWeek(){
         </div>`;
       }).join('');
     }
-    daysHtml += `<div class="week-day"><h3>${esc(day)} <span class="cnt">(${ds.length} حصة)</span></h3>${rows}</div>`;
+    const isToday = day === todayDayName();
+    daysHtml += `<div class="week-day ${isToday?'is-today':''}"><h3>${esc(day)} ${isToday?'<span class="today-pill">النهاردة</span>':''} <span class="cnt">(${ds.length} حصة)</span></h3>${rows}</div>`;
   });
 
   container.innerHTML = `
@@ -1524,6 +1731,7 @@ setInterval(checkReminders, 30000);
 
 function render(){
   renderReminderCard();
+  renderTodayCard();
   renderViewToggle();
   if(viewMode === 'week'){
     document.getElementById('kidsBar').style.display = 'none';
