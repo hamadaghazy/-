@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>متابعة دراسة الأولاد</title>
+<style>
+  :root{
+    --bg:#f4f6fb;
+    --card:#ffffff;
+    --primary:#3f6bd6;
+    --primary-dark:#2f52ac;
+    --danger:#e0524d;
+    --danger-dark:#c43f3a;
+    --success:#3fa66b;
+    --text:#22273a;
+    --muted:#6b7280;
+    --border:#e3e7f0;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Segoe UI", Tahoma, Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding-bottom:60px;
+  }
+  header{
+    background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+    color:#fff;
+    padding:22px 16px;
+    text-align:center;
+    box-shadow:0 4px 14px rgba(0,0,0,.12);
+  }
+  header h1{margin:0;font-size:1.5rem;}
+  header p{margin:6px 0 0;opacity:.9;font-size:.9rem;}
+
+  .container{
+    max-width:1100px;
+    margin:20px auto;
+    padding:0 14px;
+  }
+
+  .kids-bar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    margin-bottom:18px;
+  }
+  .kid-tab{
+    padding:9px 18px;
+    border-radius:999px;
+    background:var(--card);
+    border:2px solid var(--border);
+    cursor:pointer;
+    font-weight:600;
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    transition:.15s;
+  }
+  .kid-tab.active{
+    background:var(--primary);
+    border-color:var(--primary);
+    color:#fff;
+  }
+  .kid-tab .del-kid{
+    background:none;border:none;color:inherit;opacity:.7;cursor:pointer;font-size:1rem;line-height:1;
+  }
+  .kid-tab .del-kid:hover{opacity:1;color:#ffdada;}
+  .add-kid-btn{
+    padding:9px 16px;
+    border-radius:999px;
+    border:2px dashed var(--primary);
+    background:transparent;
+    color:var(--primary-dark);
+    cursor:pointer;
+    font-weight:600;
+  }
+
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:18px;
+    margin-bottom:20px;
+    box-shadow:0 2px 10px rgba(20,30,60,.06);
+    border:1px solid var(--border);
+  }
+  .card h2{
+    margin:0 0 14px;
+    font-size:1.15rem;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .card h2 .badge{
+    font-size:.75rem;
+    background:var(--bg);
+    color:var(--muted);
+    padding:3px 10px;
+    border-radius:999px;
+    font-weight:500;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:.92rem;
+  }
+  thead th{
+    text-align:right;
+    color:var(--muted);
+    font-weight:600;
+    padding:8px 6px;
+    border-bottom:2px solid var(--border);
+    white-space:nowrap;
+  }
+  tbody td{
+    padding:8px 6px;
+    border-bottom:1px solid var(--border);
+    vertical-align:middle;
+  }
+  tbody tr:hover{background:#f9fafc;}
+  .empty-row td{
+    text-align:center;
+    color:var(--muted);
+    padding:20px;
+  }
+
+  input[type=text], input[type=number], input[type=date], input[type=time], select, textarea{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:.9rem;
+    font-family:inherit;
+    background:#fff;
+    color:var(--text);
+  }
+  input:focus, select:focus, textarea:focus{
+    outline:none;
+    border-color:var(--primary);
+    box-shadow:0 0 0 3px rgba(63,107,214,.15);
+  }
+
+  .btn{
+    border:none;
+    border-radius:8px;
+    padding:8px 14px;
+    font-weight:600;
+    cursor:pointer;
+    font-size:.88rem;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  .btn-primary{background:var(--primary);color:#fff;}
+  .btn-primary:hover{background:var(--primary-dark);}
+  .btn-danger{background:#fdeceb;color:var(--danger-dark);}
+  .btn-danger:hover{background:var(--danger);color:#fff;}
+  .btn-ghost{background:var(--bg);color:var(--text);}
+  .btn-ghost:hover{background:#e9edf6;}
+  .btn-sm{padding:5px 10px;font-size:.8rem;}
+  .icon-btn{
+    background:none;border:none;cursor:pointer;font-size:1rem;padding:4px 6px;border-radius:6px;color:var(--muted);
+  }
+  .icon-btn:hover{background:var(--bg);color:var(--text);}
+  .icon-btn.danger:hover{color:var(--danger-dark);background:#fdeceb;}
+
+  .add-form{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px;
+    margin-bottom:14px;
+    align-items:end;
+  }
+  .add-form label{
+    font-size:.78rem;
+    color:var(--muted);
+    margin-bottom:4px;
+    display:block;
+    font-weight:600;
+  }
+  .add-form .full{grid-column:1/-1;}
+  .add-form .actions{grid-column:1/-1;text-align:left;}
+
+  .summary-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:12px;
+    margin-bottom:16px;
+  }
+  .stat{
+    background:var(--bg);
+    border-radius:12px;
+    padding:14px;
+    text-align:center;
+  }
+  .stat .val{font-size:1.4rem;font-weight:700;color:var(--primary-dark);}
+  .stat .lbl{font-size:.8rem;color:var(--muted);margin-top:2px;}
+  .stat.paid .val{color:var(--success);}
+  .stat.due .val{color:var(--danger-dark);}
+
+  .day-badge{
+    background:#eaf0fd;color:var(--primary-dark);
+    padding:3px 9px;border-radius:999px;font-size:.78rem;font-weight:600;white-space:nowrap;
+  }
+  .status-paid{color:var(--success);font-weight:700;}
+  .status-due{color:var(--danger-dark);font-weight:700;}
+
+  .toolbar{
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .empty-state{
+    text-align:center;
+    padding:50px 20px;
+    color:var(--muted);
+  }
+  .empty-state h3{color:var(--text);}
+  @media print{
+    .no-print{display:none !important;}
+    body{background:#fff;}
+    .card{box-shadow:none;border:1px solid #ccc;}
+  }
+  input[type=file]{display:none;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📚 متابعة دراسة الأولاد</h1>
+  <p>الجدول الدراسي، أسماء المدرسين، والمصاريف — كل حاجة قابلة للتعديل والإضافة والحذف</p>
+</header>
+
+<div class="container">
+
+  <div class="kids-bar no-print" id="kidsBar"></div>
+
+  <div id="emptyState" class="empty-state" style="display:none">
+    <h3>مفيش ولاد مضافين لسه</h3>
+    <p>دوس على "➕ إضافة ولد" فوق عشان تبدأ تضيف بياناته.</p>
+  </div>
+
+  <div id="kidContent"></div>
+
+  <div class="toolbar no-print">
+    <button class="btn btn-ghost btn-sm" onclick="exportData()">⬇️ تصدير نسخة احتياطية</button>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('importFile').click()">⬆️ استيراد نسخة</button>
+    <input type="file" id="importFile" accept="application/json" onchange="importData(event)">
+    <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ طباعة</button>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'kids-study-tracker-v1';
+let state = load();
+let activeKidId = state.kids.length ? state.kids[0].id : null;
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { kids: [] };
+}
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function uid(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+}
+
+function addKid(){
+  const name = prompt('اسم الولد/البنت؟');
+  if(!name || !name.trim()) return;
+  const stage = prompt('المرحلة الدراسية (مثلا: الصف الرابع الابتدائي)؟') || '';
+  const kid = { id: uid(), name: name.trim(), stage: stage.trim(), subjects: [], expenses: [] };
+  state.kids.push(kid);
+  activeKidId = kid.id;
+  save();
+  render();
+}
+
+function deleteKid(id, evt){
+  evt.stopPropagation();
+  const kid = state.kids.find(k=>k.id===id);
+  if(!kid) return;
+  if(!confirm(`متأكد إنك عايز تمسح "${kid.name}" مع كل المواد والمصاريف بتاعته؟`)) return;
+  state.kids = state.kids.filter(k=>k.id!==id);
+  if(activeKidId === id){
+    activeKidId = state.kids.length ? state.kids[0].id : null;
+  }
+  save();
+  render();
+}
+
+function selectKid(id){
+  activeKidId = id;
+  render();
+}
+
+function editKidInfo(id){
+  const kid = state.kids.find(k=>k.id===id);
+  if(!kid) return;
+  const name = prompt('اسم الولد/البنت؟', kid.name);
+  if(name === null) return;
+  const stage = prompt('المرحلة الدراسية؟', kid.stage || '');
+  kid.name = name.trim() || kid.name;
+  kid.stage = (stage||'').trim();
+  save();
+  render();
+}
+
+// ---------- Subjects ----------
+function addSubject(kidId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const name = document.getElementById('subj-name').value.trim();
+  const teacher = document.getElementById('subj-teacher').value.trim();
+  const day = document.getElementById('subj-day').value;
+  const from = document.getElementById('subj-from').value;
+  const to = document.getElementById('subj-to').value;
+  const notes = document.getElementById('subj-notes').value.trim();
+  if(!name){ alert('لازم تكتب اسم المادة'); return; }
+  kid.subjects.push({ id: uid(), name, teacher, day, from, to, notes });
+  save();
+  render();
+}
+
+function deleteSubject(kidId, subId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  if(!confirm('تمسح المادة دي؟')) return;
+  kid.subjects = kid.subjects.filter(s=>s.id!==subId);
+  save();
+  render();
+}
+
+function editSubject(kidId, subId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const sub = kid.subjects.find(s=>s.id===subId);
+  const name = prompt('اسم المادة:', sub.name);
+  if(name===null) return;
+  const teacher = prompt('اسم المدرس/المدرسة:', sub.teacher||'');
+  const day = prompt('اليوم (مثلا: السبت):', sub.day||'');
+  const from = prompt('من الساعة (مثلا 16:00):', sub.from||'');
+  const to = prompt('لحد الساعة (مثلا 17:30):', sub.to||'');
+  const notes = prompt('ملاحظات:', sub.notes||'');
+  sub.name = name.trim() || sub.name;
+  sub.teacher = (teacher||'').trim();
+  sub.day = (day||'').trim();
+  sub.from = (from||'').trim();
+  sub.to = (to||'').trim();
+  sub.notes = (notes||'').trim();
+  save();
+  render();
+}
+
+// ---------- Expenses ----------
+function addExpense(kidId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const title = document.getElementById('exp-title').value.trim();
+  const amount = parseFloat(document.getElementById('exp-amount').value);
+  const date = document.getElementById('exp-date').value;
+  const paid = document.getElementById('exp-paid').value === 'yes';
+  const notes = document.getElementById('exp-notes').value.trim();
+  if(!title){ alert('لازم تكتب بند المصروف (مثلا: مصاريف مدرسة، درس خصوصي...)'); return; }
+  if(isNaN(amount) || amount < 0){ alert('اكتب مبلغ صحيح'); return; }
+  kid.expenses.push({ id: uid(), title, amount, date, paid, notes });
+  save();
+  render();
+}
+
+function deleteExpense(kidId, expId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  if(!confirm('تمسح المصروف ده؟')) return;
+  kid.expenses = kid.expenses.filter(e=>e.id!==expId);
+  save();
+  render();
+}
+
+function toggleExpensePaid(kidId, expId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const exp = kid.expenses.find(e=>e.id===expId);
+  exp.paid = !exp.paid;
+  save();
+  render();
+}
+
+function editExpense(kidId, expId){
+  const kid = state.kids.find(k=>k.id===kidId);
+  const exp = kid.expenses.find(e=>e.id===expId);
+  const title = prompt('بند المصروف:', exp.title);
+  if(title===null) return;
+  const amountStr = prompt('المبلغ:', exp.amount);
+  const amount = parseFloat(amountStr);
+  const date = prompt('التاريخ (YYYY-MM-DD):', exp.date||'');
+  const notes = prompt('ملاحظات:', exp.notes||'');
+  exp.title = title.trim() || exp.title;
+  if(!isNaN(amount) && amount>=0) exp.amount = amount;
+  exp.date = (date||'').trim();
+  exp.notes = (notes||'').trim();
+  save();
+  render();
+}
+
+// ---------- Export / Import ----------
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'نسخة-احتياطية-متابعة-الأولاد.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.kids || !Array.isArray(data.kids)) throw new Error('صيغة غير صحيحة');
+      if(!confirm('استيراد النسخة دي هيستبدل البيانات الحالية كلها، متأكد؟')) return;
+      state = data;
+      activeKidId = state.kids.length ? state.kids[0].id : null;
+      save();
+      render();
+      alert('تم الاستيراد بنجاح');
+    }catch(err){
+      alert('الملف مش صالح: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+
+// ---------- Rendering ----------
+function esc(str){
+  const d = document.createElement('div');
+  d.textContent = str ?? '';
+  return d.innerHTML;
+}
+
+function renderKidsBar(){
+  const bar = document.getElementById('kidsBar');
+  let html = '';
+  state.kids.forEach(k=>{
+    const active = k.id === activeKidId ? 'active' : '';
+    html += `<div class="kid-tab ${active}" onclick="selectKid('${k.id}')">
+      <span>👤 ${esc(k.name)}</span>
+      <button class="del-kid" title="حذف" onclick="deleteKid('${k.id}', event)">✕</button>
+    </div>`;
+  });
+  html += `<button class="add-kid-btn" onclick="addKid()">➕ إضافة ولد</button>`;
+  bar.innerHTML = html;
+}
+
+function renderKidContent(){
+  const container = document.getElementById('kidContent');
+  const emptyState = document.getElementById('emptyState');
+  const kid = state.kids.find(k=>k.id===activeKidId);
+
+  if(!kid){
+    container.innerHTML = '';
+    emptyState.style.display = 'block';
+    return;
+  }
+  emptyState.style.display = 'none';
+
+  // subjects table rows
+  let subRows = '';
+  if(kid.subjects.length === 0){
+    subRows = `<tr class="empty-row"><td colspan="6">لسه مفيش مواد مضافة</td></tr>`;
+  } else {
+    kid.subjects
+      .slice()
+      .forEach(s=>{
+        subRows += `<tr>
+          <td><strong>${esc(s.name)}</strong>${s.notes ? `<div style="font-size:.75rem;color:var(--muted)">${esc(s.notes)}</div>`:''}</td>
+          <td>${esc(s.teacher) || '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${s.day ? `<span class="day-badge">${esc(s.day)}</span>` : '—'}</td>
+          <td>${esc(s.from)||'—'}</td>
+          <td>${esc(s.to)||'—'}</td>
+          <td>
+            <button class="icon-btn no-print" title="تعديل" onclick="editSubject('${kid.id}','${s.id}')">✏️</button>
+            <button class="icon-btn danger no-print" title="حذف" onclick="deleteSubject('${kid.id}','${s.id}')">🗑️</button>
+          </td>
+        </tr>`;
+      });
+  }
+
+  // expenses rows + totals
+  let total = 0, paidTotal = 0, dueTotal = 0;
+  kid.expenses.forEach(e=>{
+    total += Number(e.amount)||0;
+    if(e.paid) paidTotal += Number(e.amount)||0; else dueTotal += Number(e.amount)||0;
+  });
+
+  let expRows = '';
+  if(kid.expenses.length === 0){
+    expRows = `<tr class="empty-row"><td colspan="6">لسه مفيش مصاريف مضافة</td></tr>`;
+  } else {
+    kid.expenses
+      .slice()
+      .sort((a,b)=> (b.date||'').localeCompare(a.date||''))
+      .forEach(e=>{
+        expRows += `<tr>
+          <td><strong>${esc(e.title)}</strong>${e.notes ? `<div style="font-size:.75rem;color:var(--muted)">${esc(e.notes)}</div>`:''}</td>
+          <td>${(Number(e.amount)||0).toLocaleString('ar-EG')} جنيه</td>
+          <td>${esc(e.date) || '—'}</td>
+          <td>
+            <span class="${e.paid?'status-paid':'status-due'} no-print" style="cursor:pointer" onclick="toggleExpensePaid('${kid.id}','${e.id}')">
+              ${e.paid ? '✅ مدفوع' : '⏳ لسه مستحق'}
+            </span>
+            <span class="${e.paid?'status-paid':'status-due'}" style="display:none">${e.paid?'مدفوع':'مستحق'}</span>
+          </td>
+          <td>
+            <button class="icon-btn no-print" title="تعديل" onclick="editExpense('${kid.id}','${e.id}')">✏️</button>
+            <button class="icon-btn danger no-print" title="حذف" onclick="deleteExpense('${kid.id}','${e.id}')">🗑️</button>
+          </td>
+        </tr>`;
+      });
+  }
+
+  container.innerHTML = `
+    <div class="card">
+      <h2>
+        <span>👤 ${esc(kid.name)} ${kid.stage ? `<span class="badge">${esc(kid.stage)}</span>` : ''}</span>
+        <button class="btn btn-ghost btn-sm no-print" onclick="editKidInfo('${kid.id}')">✏️ تعديل البيانات</button>
+      </h2>
+    </div>
+
+    <div class="card">
+      <h2>📅 الجدول الدراسي والمدرسين</h2>
+
+      <div class="add-form no-print">
+        <div>
+          <label>اسم المادة</label>
+          <input type="text" id="subj-name" placeholder="مثلا: رياضيات">
+        </div>
+        <div>
+          <label>اسم المدرس</label>
+          <input type="text" id="subj-teacher" placeholder="اسم المدرس/المدرسة">
+        </div>
+        <div>
+          <label>اليوم</label>
+          <select id="subj-day">
+            <option value="">اختر يوم</option>
+            <option>السبت</option><option>الأحد</option><option>الإثنين</option>
+            <option>الثلاثاء</option><option>الأربعاء</option><option>الخميس</option><option>الجمعة</option>
+          </select>
+        </div>
+        <div>
+          <label>من الساعة</label>
+          <input type="time" id="subj-from">
+        </div>
+        <div>
+          <label>لحد الساعة</label>
+          <input type="time" id="subj-to">
+        </div>
+        <div class="full">
+          <label>ملاحظات</label>
+          <input type="text" id="subj-notes" placeholder="اختياري">
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="addSubject('${kid.id}')">➕ إضافة مادة</button>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr><th>المادة</th><th>المدرس</th><th>اليوم</th><th>من</th><th>لحد</th><th class="no-print">إجراءات</th></tr>
+        </thead>
+        <tbody>${subRows}</tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>💰 المصاريف</h2>
+
+      <div class="summary-grid">
+        <div class="stat"><div class="val">${total.toLocaleString('ar-EG')}</div><div class="lbl">إجمالي المصاريف (جنيه)</div></div>
+        <div class="stat paid"><div class="val">${paidTotal.toLocaleString('ar-EG')}</div><div class="lbl">تم دفعه</div></div>
+        <div class="stat due"><div class="val">${dueTotal.toLocaleString('ar-EG')}</div><div class="lbl">لسه مستحق</div></div>
+      </div>
+
+      <div class="add-form no-print">
+        <div>
+          <label>بند المصروف</label>
+          <input type="text" id="exp-title" placeholder="مثلا: مصاريف الترم">
+        </div>
+        <div>
+          <label>المبلغ (جنيه)</label>
+          <input type="number" id="exp-amount" min="0" step="0.01" placeholder="0">
+        </div>
+        <div>
+          <label>التاريخ</label>
+          <input type="date" id="exp-date">
+        </div>
+        <div>
+          <label>الحالة</label>
+          <select id="exp-paid">
+            <option value="no">لسه مستحق</option>
+            <option value="yes">مدفوع</option>
+          </select>
+        </div>
+        <div class="full">
+          <label>ملاحظات</label>
+          <input type="text" id="exp-notes" placeholder="اختياري">
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="addExpense('${kid.id}')">➕ إضافة مصروف</button>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr><th>البند</th><th>المبلغ</th><th>التاريخ</th><th>الحالة</th><th class="no-print">إجراءات</th></tr>
+        </thead>
+        <tbody>${expRows}</tbody>
+      </table>
+      </div>
+    </div>
+  `;
+}
+
+function render(){
+  renderKidsBar();
+  renderKidContent();
+}
+
+render();
+</script>
+</body>
+</html>
