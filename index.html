@@ -814,7 +814,7 @@ function buildWeek(){
       const end = parseMin(s.to);
       days.forEach(day=>{
         slots.push({
-          day, kidId:k.id, kidName:k.name, subj:s.name, teacher:s.teacher,
+          day, kidId:k.id, kidName:k.name, subId:s.id, subj:s.name, teacher:s.teacher,
           from:s.from, to:s.to, start,
           end: end!=null ? end : (start!=null ? start+60 : null),
           conflict:false, conflictWith:[]
@@ -896,6 +896,7 @@ function renderWeek(){
           <span class="who" style="background:${c}">${esc(s.kidName)}</span>
           <span class="subj">${esc(s.subj)}${s.teacher?` <span class="tchr">— ${esc(s.teacher)}</span>`:''}</span>
           ${s.conflict?`<span class="warn" title="تعارض مع: ${esc(s.conflictWith.join(' / '))}">⚠️ تعارض</span>`:''}
+          <button class="icon-btn no-print" title="تغيير الميعاد" onclick="editSubject('${s.kidId}','${s.subId}')">✏️</button>
         </div>`;
       }).join('');
     }
