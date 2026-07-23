@@ -234,6 +234,30 @@
   }
   .empty-state h3{color:var(--text);}
 
+  /* ----- reminders ----- */
+  .reminder-card{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:linear-gradient(135deg,#fff7e6,#fff);border:1px solid #f0d9a8;
+  }
+  .reminder-card .rc-title{font-weight:700;display:flex;align-items:center;gap:6px;}
+  .reminder-card .rc-lead{display:inline-flex;align-items:center;gap:6px;font-size:.85rem;color:var(--muted);}
+  .reminder-card .rc-lead input{width:64px;text-align:center;}
+  .reminder-card .rc-status{font-size:.82rem;}
+  .rc-on{color:var(--success);font-weight:700;}
+  .rc-off{color:var(--muted);}
+  .rc-hint{font-size:.75rem;color:var(--muted);flex-basis:100%;margin-top:-4px;}
+  .toast-wrap{
+    position:fixed;inset-block-start:14px;inset-inline:0;display:flex;flex-direction:column;
+    align-items:center;gap:8px;z-index:9999;pointer-events:none;padding:0 12px;
+  }
+  .toast{
+    pointer-events:auto;background:var(--primary-dark);color:#fff;padding:12px 16px;border-radius:12px;
+    box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:420px;width:100%;font-size:.9rem;
+    display:flex;gap:10px;align-items:flex-start;animation:toastIn .25s ease;
+  }
+  .toast .t-close{margin-inline-start:auto;background:none;border:none;color:#fff;cursor:pointer;font-size:1.1rem;line-height:1;}
+  @keyframes toastIn{from{transform:translateY(-12px);opacity:0}to{transform:translateY(0);opacity:1}}
+
   /* ----- unified weekly view ----- */
   .view-toggle{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
   .view-toggle button{
@@ -273,12 +297,16 @@
 </head>
 <body>
 
+<div class="toast-wrap no-print" id="toastWrap"></div>
+
 <header>
   <h1>📚 متابعة دراسة الأولاد</h1>
   <p>الجدول الدراسي، أسماء المدرسين، والمصاريف — كل حاجة قابلة للتعديل والإضافة والحذف</p>
 </header>
 
 <div class="container">
+
+  <div class="card reminder-card no-print" id="reminderCard"></div>
 
   <div class="view-toggle no-print" id="viewToggle"></div>
 
@@ -926,7 +954,134 @@ function renderViewToggle(){
   `;
 }
 
+// ---------- Reminders (تنبيه قبل كل حصة) ----------
+const REMIND_KEY = 'kids-reminders-settings';
+const NOTIFIED_KEY = 'kids-reminders-notified';
+const AR_DAY_INDEX = { 'الأحد':0,'الاثنين':1,'الثلاثاء':2,'الأربعاء':3,'الخميس':4,'الجمعة':5,'السبت':6 };
+
+let reminderSettings = loadReminderSettings();
+
+function loadReminderSettings(){
+  try{
+    const raw = localStorage.getItem(REMIND_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { enabled:false, lead:30 };
+}
+function saveReminderSettings(){
+  localStorage.setItem(REMIND_KEY, JSON.stringify(reminderSettings));
+}
+
+function loadNotified(){
+  const today = new Date().toISOString().slice(0,10);
+  let obj = {};
+  try{ obj = JSON.parse(localStorage.getItem(NOTIFIED_KEY)) || {}; }catch(e){}
+  if(obj.date !== today) obj = { date: today, keys: [] }; // reset every day
+  return obj;
+}
+let notifiedStore = loadNotified();
+function markNotified(key){
+  notifiedStore.keys.push(key);
+  localStorage.setItem(NOTIFIED_KEY, JSON.stringify(notifiedStore));
+}
+
+// كل الحصص المستحق تنبيهها دلوقتي (خلال نافذة "قبل الحصة")
+function dueReminders(now, leadMin){
+  const { slots } = buildWeek();
+  const todayStr = now.toISOString().slice(0,10);
+  const due = [];
+  slots.forEach(s=>{
+    if(s.start == null) return;
+    const di = AR_DAY_INDEX[s.day];
+    if(di == null || now.getDay() !== di) return;
+    const startT = new Date(now);
+    startT.setHours(Math.floor(s.start/60), s.start%60, 0, 0);
+    const remindT = new Date(startT.getTime() - leadMin*60000);
+    if(now >= remindT && now < startT){
+      due.push({ ...s, startT, key:`${s.subId}|${todayStr}|${s.from}` });
+    }
+  });
+  return due;
+}
+
+function checkReminders(){
+  if(!reminderSettings.enabled) return;
+  notifiedStore = loadNotified(); // يتأكد من إعادة الضبط لو اتغير اليوم
+  const due = dueReminders(new Date(), Number(reminderSettings.lead)||30);
+  due.forEach(d=>{
+    if(notifiedStore.keys.includes(d.key)) return;
+    markNotified(d.key);
+    fireReminder(d);
+  });
+}
+
+function fireReminder(d){
+  const title = `🔔 حصة ${d.subj} — ${d.kidName}`;
+  const body = `الساعة ${d.from}${d.teacher? ' مع '+d.teacher : ''} (بعد ${reminderSettings.lead} دقيقة)`;
+  if('Notification' in window && Notification.permission === 'granted'){
+    try{ new Notification(title, { body, tag: d.key }); }catch(e){}
+  }
+  showToast(title, body);
+}
+
+function showToast(title, body){
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<div><strong>${esc(title)}</strong><div style="opacity:.9;margin-top:2px">${esc(body)}</div></div>
+    <button class="t-close" onclick="this.parentNode.remove()">✕</button>`;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.remove(); }, 15000);
+}
+
+async function enableReminders(){
+  reminderSettings.enabled = true;
+  saveReminderSettings();
+  if('Notification' in window && Notification.permission === 'default'){
+    try{ await Notification.requestPermission(); }catch(e){}
+  }
+  renderReminderCard();
+  checkReminders();
+}
+function disableReminders(){
+  reminderSettings.enabled = false;
+  saveReminderSettings();
+  renderReminderCard();
+}
+function setLead(v){
+  const n = parseInt(v,10);
+  reminderSettings.lead = (!isNaN(n) && n>=0) ? n : 30;
+  saveReminderSettings();
+  renderReminderCard();
+}
+
+function renderReminderCard(){
+  const el = document.getElementById('reminderCard');
+  const permGranted = ('Notification' in window) && Notification.permission === 'granted';
+  const hasNotif = ('Notification' in window);
+  let statusHtml, actionHtml;
+  if(reminderSettings.enabled){
+    statusHtml = `<span class="rc-status rc-on">● التنبيهات مفعّلة${permGranted? '' : ' (داخل الصفحة فقط — الإشعارات مش مسموحة)'}</span>`;
+    actionHtml = `<button class="btn btn-ghost btn-sm" onclick="disableReminders()">إيقاف</button>`;
+  } else {
+    statusHtml = `<span class="rc-status rc-off">○ التنبيهات متوقفة</span>`;
+    actionHtml = `<button class="btn btn-primary btn-sm" onclick="enableReminders()">🔔 فعّل التنبيهات</button>`;
+  }
+  el.innerHTML = `
+    <span class="rc-title">🔔 تنبيه قبل الحصص</span>
+    <span class="rc-lead">قبل الحصة بـ
+      <input type="number" min="0" step="5" value="${esc(reminderSettings.lead)}" onchange="setLead(this.value)"> دقيقة</span>
+    ${statusHtml}
+    ${actionHtml}
+    <span class="rc-hint">التنبيه بيشتغل طول ما الصفحة مفتوحة${hasNotif? '' : ' (متصفحك مبيدعمش الإشعارات، فهيظهر تنبيه داخل الصفحة)'} — لتنبيه في الخلفية استخدم تنبيهات جوجل كالندر.</span>
+  `;
+}
+
+// فحص كل 30 ثانية + فحص فوري عند الفتح
+setInterval(checkReminders, 30000);
+
 function render(){
+  renderReminderCard();
   renderViewToggle();
   if(viewMode === 'week'){
     document.getElementById('kidsBar').style.display = 'none';
@@ -939,6 +1094,7 @@ function render(){
 }
 
 render();
+checkReminders();
 </script>
 </body>
 </html>
