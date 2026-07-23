@@ -231,9 +231,15 @@
   .sess-btn:disabled{opacity:.4;cursor:not-allowed;}
   .sess-count{font-weight:700;min-width:40px;text-align:center;}
   .sess-count.full{color:var(--danger-dark);}
-  .sess-bar{width:82px;height:7px;border-radius:999px;background:var(--border);overflow:hidden;}
-  .sess-bar > i{display:block;height:100%;background:var(--primary);transition:width .2s;}
-  .sess-bar.full > i{background:var(--danger);}
+  .sess-bar{width:82px;height:7px;border-radius:999px;background:var(--border);overflow:hidden;display:flex;}
+  .sess-bar > i{display:block;height:100%;transition:width .2s;}
+  .sess-bar .seg-att{background:var(--primary);}
+  .sess-bar .seg-miss{background:#e0a020;}
+  .sess-bar.full .seg-att{background:var(--danger);}
+  .sess-sub{display:inline-flex;align-items:center;gap:4px;color:var(--muted);}
+  .sess-sub b{color:var(--text);min-width:12px;text-align:center;}
+  .sess-sub.miss{color:#b9791a;}
+  .sess-sub.miss b{color:#b9791a;}
   .sess-cycle{color:var(--muted);}
   .sess-pay{
     background:var(--danger);color:#fff;border:none;border-radius:999px;
@@ -708,16 +714,27 @@ function getSub(kidId, subId){
 
 function sessionWidget(kidId, s){
   const target = Number(s.sessionTarget) || 8;
-  const count = Number(s.sessionCount) || 0;
+  const attended = Number(s.sessionCount) || 0;
+  const missed = Number(s.missedCount) || 0;
+  const done = attended + missed;
   const cycle = Number(s.cyclesDone) || 0;
-  const full = count >= target;
-  const pct = Math.min(100, Math.round(count / target * 100));
+  const full = done >= target;
+  const attPct = Math.min(100, Math.round(attended / target * 100));
+  const missPct = Math.min(100 - attPct, Math.round(missed / target * 100));
   let html = `<div class="sess">
     <span class="sess-label">الحصص:</span>
-    <button class="sess-btn no-print" title="ناقص حصة" onclick="decSession('${kidId}','${s.id}')" ${count<=0?'disabled':''}>−</button>
-    <span class="sess-count ${full?'full':''}">${count}/${target}</span>
-    <button class="sess-btn no-print" title="حضر حصة" onclick="incSession('${kidId}','${s.id}')" ${full?'disabled':''}>+</button>
-    <span class="sess-bar ${full?'full':''}"><i style="width:${pct}%"></i></span>`;
+    <span class="sess-count ${full?'full':''}">${done}/${target}</span>
+    <span class="sess-bar ${full?'full':''}"><i class="seg-att" style="width:${attPct}%"></i><i class="seg-miss" style="width:${missPct}%"></i></span>
+    <span class="sess-sub no-print">حضر:
+      <button class="sess-btn" title="ناقص حضور" onclick="decSession('${kidId}','${s.id}')" ${attended<=0?'disabled':''}>−</button>
+      <b>${attended}</b>
+      <button class="sess-btn" title="حضر حصة" onclick="incSession('${kidId}','${s.id}')" ${full?'disabled':''}>+</button>
+    </span>
+    <span class="sess-sub miss no-print">فايتة:
+      <button class="sess-btn" title="ناقص فايتة" onclick="decMissed('${kidId}','${s.id}')" ${missed<=0?'disabled':''}>−</button>
+      <b>${missed}</b>
+      <button class="sess-btn" title="حصة فايتة (غياب)" onclick="incMissed('${kidId}','${s.id}')" ${full?'disabled':''}>+</button>
+    </span>`;
   if(cycle > 0) html += `<span class="sess-cycle">دورة #${cycle+1}</span>`;
   if(full) html += `<button class="sess-pay no-print" onclick="renewSession('${kidId}','${s.id}')">💰 الدفع مستحق — سدّد وجدّد</button>`;
   return html + '</div>';
@@ -727,9 +744,10 @@ function incSession(kidId, subId){
   const sub = getSub(kidId, subId);
   if(!sub) return;
   const target = Number(sub.sessionTarget) || 8;
-  const count = Number(sub.sessionCount) || 0;
+  const att = Number(sub.sessionCount) || 0;
+  const miss = Number(sub.missedCount) || 0;
   sub.sessionTarget = target;
-  if(count < target) sub.sessionCount = count + 1;
+  if(att + miss < target) sub.sessionCount = att + 1;
   save();
   render();
 }
@@ -737,8 +755,30 @@ function incSession(kidId, subId){
 function decSession(kidId, subId){
   const sub = getSub(kidId, subId);
   if(!sub) return;
-  const count = Number(sub.sessionCount) || 0;
-  if(count > 0) sub.sessionCount = count - 1;
+  const att = Number(sub.sessionCount) || 0;
+  if(att > 0) sub.sessionCount = att - 1;
+  save();
+  render();
+}
+
+// حصة فايتة (غياب) — بتتحسب ضمن الدورة زي الحضور لكن متميّزة
+function incMissed(kidId, subId){
+  const sub = getSub(kidId, subId);
+  if(!sub) return;
+  const target = Number(sub.sessionTarget) || 8;
+  const att = Number(sub.sessionCount) || 0;
+  const miss = Number(sub.missedCount) || 0;
+  sub.sessionTarget = target;
+  if(att + miss < target) sub.missedCount = miss + 1;
+  save();
+  render();
+}
+
+function decMissed(kidId, subId){
+  const sub = getSub(kidId, subId);
+  if(!sub) return;
+  const miss = Number(sub.missedCount) || 0;
+  if(miss > 0) sub.missedCount = miss - 1;
   save();
   render();
 }
@@ -747,9 +787,10 @@ function renewSession(kidId, subId){
   const sub = getSub(kidId, subId);
   if(!sub) return;
   const target = Number(sub.sessionTarget) || 8;
-  if(!confirm(`تأكيد إن الدفع اتم لـ "${sub.name}"؟ العداد هيرجع صفر وتبدأ دورة جديدة (${target} حصص).`)) return;
+  if(!confirm(`تأكيد إن الدفع اتم لـ "${sub.name}"؟ العدادات هترجع صفر وتبدأ دورة جديدة (${target} حصص).`)) return;
   sub.cyclesDone = (Number(sub.cyclesDone) || 0) + 1;
   sub.sessionCount = 0;
+  sub.missedCount = 0;
   save();
   render();
 }
