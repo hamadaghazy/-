@@ -233,6 +233,36 @@
     color:var(--muted);
   }
   .empty-state h3{color:var(--text);}
+
+  /* ----- unified weekly view ----- */
+  .view-toggle{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .view-toggle button{
+    padding:9px 18px;border-radius:999px;border:2px solid var(--border);
+    background:var(--card);cursor:pointer;font-weight:600;color:var(--text);
+  }
+  .view-toggle button.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.85rem;}
+  .legend span.item{display:inline-flex;align-items:center;gap:6px;}
+  .legend .dot{width:12px;height:12px;border-radius:50%;display:inline-block;}
+  .week-day{margin-bottom:16px;}
+  .week-day h3{
+    margin:0 0 8px;font-size:1rem;display:flex;align-items:center;gap:8px;
+    border-bottom:2px solid var(--border);padding-bottom:6px;
+  }
+  .week-day h3 .cnt{font-size:.72rem;color:var(--muted);font-weight:500;}
+  .slot{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:10px 12px;border-radius:10px;border:1px solid var(--border);
+    margin-bottom:7px;background:#fff;border-inline-start:5px solid var(--kidc,#ccc);
+  }
+  .slot .time{font-weight:700;min-width:96px;font-size:.9rem;}
+  .slot .who{font-size:.75rem;color:#fff;padding:2px 10px;border-radius:999px;white-space:nowrap;}
+  .slot .subj{font-weight:600;flex:1;min-width:120px;}
+  .slot .tchr{font-size:.8rem;color:var(--muted);font-weight:400;}
+  .slot .warn{margin-inline-start:auto;color:var(--danger-dark);font-weight:700;font-size:.8rem;white-space:nowrap;}
+  .slot.conflict{background:#fdeceb;border-color:var(--danger);}
+  .empty-day{color:var(--muted);font-size:.85rem;padding:2px;}
+
   @media print{
     .no-print{display:none !important;}
     body{background:#fff;}
@@ -249,6 +279,8 @@
 </header>
 
 <div class="container">
+
+  <div class="view-toggle no-print" id="viewToggle"></div>
 
   <div class="kids-bar no-print" id="kidsBar"></div>
 
@@ -341,6 +373,7 @@ function defaultSeed(){
 
 let state = load();
 let activeKidId = state.kids.length ? state.kids[0].id : null;
+let viewMode = 'kids'; // 'kids' | 'week'
 
 function load(){
   try{
@@ -747,9 +780,161 @@ function renderKidContent(){
   `;
 }
 
+// ---------- Unified weekly schedule ----------
+const WEEK_DAYS = ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'];
+const KID_COLORS = ['#3f6bd6','#c9407a','#2f8f6b','#c07a1e','#7a49c9','#c43f3a','#0f8f9f'];
+
+function kidColor(kidId){
+  const i = state.kids.findIndex(k=>k.id===kidId);
+  return KID_COLORS[(i<0?0:i) % KID_COLORS.length];
+}
+
+function parseMin(t){
+  if(!t) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(t).trim());
+  if(!m) return null;
+  return (+m[1])*60 + (+m[2]);
+}
+
+// يقرأ حقل اليوم (ممكن يكون فيه يومين: "السبت والثلاثاء")
+function daysInText(text){
+  if(!text) return [];
+  const found = [];
+  WEEK_DAYS.forEach(d=>{ if(text.includes(d)) found.push(d); });
+  if(!found.includes('الاثنين') && text.includes('الإثنين')) found.push('الاثنين');
+  return found;
+}
+
+function buildWeek(){
+  const slots = [];
+  state.kids.forEach(k=>{
+    (k.subjects||[]).forEach(s=>{
+      const days = daysInText(s.day);
+      const start = parseMin(s.from);
+      const end = parseMin(s.to);
+      days.forEach(day=>{
+        slots.push({
+          day, kidId:k.id, kidName:k.name, subj:s.name, teacher:s.teacher,
+          from:s.from, to:s.to, start,
+          end: end!=null ? end : (start!=null ? start+60 : null),
+          conflict:false, conflictWith:[]
+        });
+      });
+    });
+  });
+
+  const pairs = [];
+  WEEK_DAYS.forEach(day=>{
+    const ds = slots.filter(sl=>sl.day===day && sl.start!=null);
+    for(let i=0;i<ds.length;i++){
+      for(let j=i+1;j<ds.length;j++){
+        const a=ds[i], b=ds[j];
+        // حصة مشتركة (نفس المدرس ونفس الميعاد) مش تعارض — الأولاد بيحضروها مع بعض
+        const shared = a.teacher && b.teacher &&
+                       a.teacher.trim() === b.teacher.trim() &&
+                       a.from === b.from;
+        if(!shared && a.start < b.end && b.start < a.end){ // تداخل زمني
+          a.conflict=true; b.conflict=true;
+          a.conflictWith.push(`${b.kidName} · ${b.subj}`);
+          b.conflictWith.push(`${a.kidName} · ${a.subj}`);
+          pairs.push({
+            day,
+            a:`${a.kidName} — ${a.subj} (${a.from||'؟'})`,
+            b:`${b.kidName} — ${b.subj} (${b.from||'؟'})`
+          });
+        }
+      }
+    }
+  });
+  return { slots, pairs };
+}
+
+function renderWeek(){
+  const container = document.getElementById('kidContent');
+  document.getElementById('emptyState').style.display = 'none';
+
+  if(state.kids.length === 0){
+    container.innerHTML = `<div class="card"><p style="color:var(--muted);text-align:center">مفيش ولاد أو مواد مضافة لسه.</p></div>`;
+    return;
+  }
+
+  const { slots, pairs } = buildWeek();
+
+  const legend = state.kids.map(k=>
+    `<span class="item"><span class="dot" style="background:${kidColor(k.id)}"></span>${esc(k.name)}</span>`
+  ).join('');
+
+  let banner;
+  if(pairs.length === 0){
+    banner = `<div class="card" style="border-color:var(--success)"><strong style="color:var(--success)">✅ مفيش أي تعارض في المواعيد بين الأولاد</strong></div>`;
+  } else {
+    const items = pairs.map(p=>
+      `<li style="margin-bottom:6px"><span class="day-badge">${esc(p.day)}</span> ${esc(p.a)} &nbsp;<span style="color:var(--danger-dark);font-weight:700">✕</span>&nbsp; ${esc(p.b)}</li>`
+    ).join('');
+    banner = `<div class="card" style="border-color:var(--danger);background:#fdeceb">
+      <strong style="color:var(--danger-dark)">⚠️ فيه ${pairs.length} تعارض في المواعيد:</strong>
+      <ul style="margin:10px 0 0;padding-inline-start:18px;line-height:1.7">${items}</ul>
+    </div>`;
+  }
+
+  let daysHtml = '';
+  WEEK_DAYS.forEach(day=>{
+    const ds = slots.filter(s=>s.day===day).sort((a,b)=>{
+      if(a.start==null) return 1;
+      if(b.start==null) return -1;
+      return a.start - b.start;
+    });
+    let rows;
+    if(ds.length === 0){
+      rows = `<div class="empty-day">— مفيش حصص —</div>`;
+    } else {
+      rows = ds.map(s=>{
+        const c = kidColor(s.kidId);
+        const time = s.from ? (s.from + (s.to ? ' - ' + s.to : '')) : '—';
+        return `<div class="slot ${s.conflict?'conflict':''}" style="--kidc:${c}">
+          <span class="time">🕐 ${esc(time)}</span>
+          <span class="who" style="background:${c}">${esc(s.kidName)}</span>
+          <span class="subj">${esc(s.subj)}${s.teacher?` <span class="tchr">— ${esc(s.teacher)}</span>`:''}</span>
+          ${s.conflict?`<span class="warn" title="تعارض مع: ${esc(s.conflictWith.join(' / '))}">⚠️ تعارض</span>`:''}
+        </div>`;
+      }).join('');
+    }
+    daysHtml += `<div class="week-day"><h3>${esc(day)} <span class="cnt">(${ds.length} حصة)</span></h3>${rows}</div>`;
+  });
+
+  container.innerHTML = `
+    <div class="card">
+      <h2>📆 الجدول الأسبوعي الموحّد لكل الأولاد</h2>
+      <div class="legend">${legend}</div>
+    </div>
+    ${banner}
+    <div class="card">${daysHtml}</div>
+  `;
+}
+
+// ---------- View toggle ----------
+function setView(mode){
+  viewMode = mode;
+  render();
+}
+function renderViewToggle(){
+  const el = document.getElementById('viewToggle');
+  el.innerHTML = `
+    <button class="${viewMode==='kids'?'active':''}" onclick="setView('kids')">👤 حسب كل ولد</button>
+    <button class="${viewMode==='week'?'active':''}" onclick="setView('week')">📆 الجدول الأسبوعي الموحّد</button>
+  `;
+}
+
 function render(){
-  renderKidsBar();
-  renderKidContent();
+  renderViewToggle();
+  if(viewMode === 'week'){
+    document.getElementById('kidsBar').style.display = 'none';
+    renderWeek();
+  } else {
+    document.getElementById('kidsBar').style.display = 'flex';
+    renderKidsBar();
+    renderKidContent();
+  }
 }
 
 render();
