@@ -105,6 +105,14 @@
     border-radius:999px;
     font-weight:500;
   }
+  .kid-notes{
+    margin-top:8px;
+    font-size:.83rem;
+    color:var(--muted);
+    background:var(--bg);
+    padding:8px 12px;
+    border-radius:10px;
+  }
 
   table{
     width:100%;
@@ -200,7 +208,7 @@
     padding:14px;
     text-align:center;
   }
-  .stat .val{font-size:1.4rem;font-weight:700;color:var(--primary-dark);}
+  .stat .val{font-size:1.3rem;font-weight:700;color:var(--primary-dark);}
   .stat .lbl{font-size:.8rem;color:var(--muted);margin-top:2px;}
   .stat.paid .val{color:var(--success);}
   .stat.due .val{color:var(--danger-dark);}
@@ -252,6 +260,7 @@
   <div id="kidContent"></div>
 
   <div class="toolbar no-print">
+    <button class="btn btn-ghost btn-sm" onclick="resetToSeed()">↩️ استرجاع البيانات الأصلية</button>
     <button class="btn btn-ghost btn-sm" onclick="exportData()">⬇️ تصدير نسخة احتياطية</button>
     <button class="btn btn-ghost btn-sm" onclick="document.getElementById('importFile').click()">⬆️ استيراد نسخة</button>
     <input type="file" id="importFile" accept="application/json" onchange="importData(event)">
@@ -260,7 +269,76 @@
 </div>
 
 <script>
-const STORAGE_KEY = 'kids-study-tracker-v1';
+const STORAGE_KEY = 'kids-study-tracker-v2';
+const CURRENCIES = ['ج.م','د.ك','ر.س','درهم','دولار'];
+
+// ---------- Default data (بيانات الأولاد الحقيقية) ----------
+function defaultSeed(){
+  return { kids: [
+    {
+      id:'k_selim', name:'سليم',
+      stage:'الصف الثالث الابتدائي — مدرسة النجاة الأهلية السالمية بنين',
+      notes:'رقم الطالب: 20240081 · رقم ولي الأمر: 18368 · الرسوم المدرسية السنوية: 406 د.ك',
+      subjects:[
+        {id:'s1',name:'تأسيس رياضيات',teacher:'مس أم أحمد',day:'السبت والثلاثاء',from:'16:00',to:'',notes:'450 ج.م / 8 حصص شهريًا'},
+        {id:'s2',name:'تأسيس عربي (3ب)',teacher:'أ. محمود عبد الحليم',day:'الاثنين والخميس',from:'20:00',to:'',notes:'500 ج.م / 8 حصص شهريًا'},
+        {id:'s3',name:'مجموعة تأسيس عربي',teacher:'مس رنا',day:'الأحد والأربعاء',from:'14:00',to:'',notes:'300 ج.م / 8 حصص شهريًا'},
+        {id:'s4',name:'مجموعة إنجليزي',teacher:'مس سعاد أمين',day:'الأحد والأربعاء',from:'18:00',to:'',notes:'300 ج.م شهريًا'},
+        {id:'s5',name:'علوم (أكاديمية أونلاين)',teacher:'مس غيداء',day:'الاثنين والخميس',from:'16:00',to:'',notes:'الاثنين 4م / الخميس 6م — أونلاين · 600 ج.م شهريًا'},
+        {id:'s6',name:'التفوق — رياضيات',teacher:'مس حبيبة',day:'الأحد والأربعاء',from:'16:00',to:'',notes:'ضمن كورسات التفوق (1,400 ج.م)'},
+        {id:'s7',name:'التفوق — إنجليزي',teacher:'مس صفاء',day:'السبت والثلاثاء',from:'18:00',to:'',notes:'ضمن كورسات التفوق'},
+        {id:'s8',name:'التفوق — عربي',teacher:'مس هبة الله',day:'الثلاثاء والخميس',from:'13:00',to:'',notes:'الثلاثاء 1م / الخميس 4م — ضمن التفوق'}
+      ],
+      expenses:[
+        {id:'e1',title:'الرسوم المدرسية السنوية',amount:406,currency:'د.ك',date:'',paid:false,notes:'مدرسة النجاة — راجع حالة السداد'},
+        {id:'e2',title:'تأسيس رياضيات (مس أم أحمد) — شهر 7',amount:450,currency:'ج.م',date:'2026-07-01',paid:true,notes:''},
+        {id:'e3',title:'تأسيس عربي (أ. محمود)',amount:500,currency:'ج.م',date:'2026-07-01',paid:true,notes:''},
+        {id:'e4',title:'مجموعة عربي (مس رنا)',amount:300,currency:'ج.م',date:'2026-07-01',paid:true,notes:''},
+        {id:'e5',title:'مجموعة إنجليزي (مس سعاد)',amount:300,currency:'ج.م',date:'2026-07-22',paid:true,notes:'عبر إنستاباي'},
+        {id:'e6',title:'علوم (مس غيداء)',amount:600,currency:'ج.م',date:'2026-07-01',paid:true,notes:'أونلاين'},
+        {id:'e7',title:'كورسات التفوق (رياضيات + إنجليزي + عربي)',amount:1400,currency:'ج.م',date:'2026-07-01',paid:true,notes:'مس حبيبة + مس صفاء + مس هبة الله'},
+        {id:'e8',title:'رياضيات أم أحمد — أغسطس',amount:450,currency:'ج.م',date:'2026-08-01',paid:false,notes:'تكرار شهري'},
+        {id:'e9',title:'عربي أ. محمود — أغسطس',amount:500,currency:'ج.م',date:'2026-08-01',paid:false,notes:'تكرار شهري'},
+        {id:'e10',title:'عربي مس رنا — أغسطس',amount:300,currency:'ج.م',date:'2026-08-01',paid:false,notes:'تكرار شهري'},
+        {id:'e11',title:'إنجليزي مس سعاد — أغسطس',amount:300,currency:'ج.م',date:'2026-08-01',paid:false,notes:'تكرار شهري'}
+      ]
+    },
+    {
+      id:'k_sara', name:'سارة',
+      stage:'الصف الثالث الثانوي الأدبي — نظام أبناؤنا في الخارج',
+      notes:'',
+      subjects:[
+        {id:'sa1',name:'اللغة الإنجليزية',teacher:'مس إسراء (ART SARA)',day:'السبت والأربعاء',from:'16:00',to:'',notes:'كورس الشهرين 26/6 → 26/8 (1,500 ج.م)'},
+        {id:'sa2',name:'اللغة العربية',teacher:'أ. محمود عبد الحليم',day:'الأحد والأربعاء',from:'20:00',to:'',notes:'مشترك مع سيف · المنهج الأساسي يبدأ أغسطس 2026 (800 ج.م شهريًا / 8 حصص)'}
+      ],
+      expenses:[
+        {id:'sae1',title:'إنجليزي مس إسراء — دفعة',amount:1000,currency:'ج.م',date:'2026-06-26',paid:true,notes:'كورس الشهرين'},
+        {id:'sae2',title:'عمولة مشرفة (إنجليزي مس إسراء)',amount:500,currency:'ج.م',date:'2026-06-26',paid:true,notes:''},
+        {id:'sae3',title:'إنجليزي مس إسراء — قسط أخير',amount:500,currency:'ج.م',date:'2026-08-26',paid:false,notes:'قبل 26/08'},
+        {id:'sae4',title:'عربي أ. محمود — كورس تأهيلي',amount:1200,currency:'ج.م',date:'',paid:true,notes:'مشترك (سارة + سيف)'},
+        {id:'sae5',title:'عربي أ. محمود — منهج أساسي (أغسطس)',amount:800,currency:'ج.م',date:'2026-08-01',paid:false,notes:'8 حصص شهريًا'}
+      ]
+    },
+    {
+      id:'k_seif', name:'سيف',
+      stage:'الصف الثاني الثانوي العلمي — نظام أبناؤنا في الخارج',
+      notes:'',
+      subjects:[
+        {id:'se1',name:'اللغة الإنجليزية',teacher:'مس إسراء (ART SARA)',day:'الأحد والجمعة',from:'16:00',to:'',notes:'كورس الشهرين 26/6 → 26/8 (1,500 ج.م)'},
+        {id:'se2',name:'اللغة العربية',teacher:'أ. محمود عبد الحليم',day:'الأحد والأربعاء',from:'20:00',to:'',notes:'مشترك مع سارة · منهج أساسي من أغسطس (800 ج.م شهريًا)'},
+        {id:'se3',name:'العلوم',teacher:'مدرس علوم سيف',day:'',from:'',to:'',notes:'دفعة لمرة واحدة'}
+      ],
+      expenses:[
+        {id:'see1',title:'إنجليزي مس إسراء — دفعة',amount:1000,currency:'ج.م',date:'2026-06-26',paid:true,notes:'كورس الشهرين'},
+        {id:'see2',title:'عمولة مشرفة (إنجليزي مس إسراء)',amount:500,currency:'ج.م',date:'2026-06-26',paid:true,notes:''},
+        {id:'see3',title:'إنجليزي مس إسراء — قسط أخير',amount:500,currency:'ج.م',date:'2026-08-26',paid:false,notes:'قبل 26/08'},
+        {id:'see4',title:'العلوم (دفعة واحدة)',amount:111,currency:'ج.م',date:'',paid:true,notes:'عبر فون كاش'},
+        {id:'see5',title:'عربي أ. محمود — منهج أساسي (أغسطس)',amount:800,currency:'ج.م',date:'2026-08-01',paid:false,notes:'8 حصص شهريًا'}
+      ]
+    }
+  ]};
+}
+
 let state = load();
 let activeKidId = state.kids.length ? state.kids[0].id : null;
 
@@ -269,7 +347,7 @@ function load(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw) return JSON.parse(raw);
   }catch(e){}
-  return { kids: [] };
+  return defaultSeed();
 }
 function save(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -278,11 +356,20 @@ function uid(){
   return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
 }
 
+function resetToSeed(){
+  if(!confirm('ده هيرجّع كل البيانات للنسخة الأصلية ويمسح أي تعديلات عملتها. متأكد؟')) return;
+  state = defaultSeed();
+  activeKidId = state.kids.length ? state.kids[0].id : null;
+  save();
+  render();
+}
+
 function addKid(){
   const name = prompt('اسم الولد/البنت؟');
   if(!name || !name.trim()) return;
   const stage = prompt('المرحلة الدراسية (مثلا: الصف الرابع الابتدائي)؟') || '';
-  const kid = { id: uid(), name: name.trim(), stage: stage.trim(), subjects: [], expenses: [] };
+  const notes = prompt('ملاحظات (رقم الطالب، ولي الأمر، المدرسة... اختياري)؟') || '';
+  const kid = { id: uid(), name: name.trim(), stage: stage.trim(), notes: notes.trim(), subjects: [], expenses: [] };
   state.kids.push(kid);
   activeKidId = kid.id;
   save();
@@ -313,8 +400,10 @@ function editKidInfo(id){
   const name = prompt('اسم الولد/البنت؟', kid.name);
   if(name === null) return;
   const stage = prompt('المرحلة الدراسية؟', kid.stage || '');
+  const notes = prompt('ملاحظات (رقم الطالب، ولي الأمر، المدرسة...)؟', kid.notes || '');
   kid.name = name.trim() || kid.name;
   kid.stage = (stage||'').trim();
+  kid.notes = (notes||'').trim();
   save();
   render();
 }
@@ -348,7 +437,7 @@ function editSubject(kidId, subId){
   const name = prompt('اسم المادة:', sub.name);
   if(name===null) return;
   const teacher = prompt('اسم المدرس/المدرسة:', sub.teacher||'');
-  const day = prompt('اليوم (مثلا: السبت):', sub.day||'');
+  const day = prompt('اليوم (مثلا: السبت والثلاثاء):', sub.day||'');
   const from = prompt('من الساعة (مثلا 16:00):', sub.from||'');
   const to = prompt('لحد الساعة (مثلا 17:30):', sub.to||'');
   const notes = prompt('ملاحظات:', sub.notes||'');
@@ -367,12 +456,13 @@ function addExpense(kidId){
   const kid = state.kids.find(k=>k.id===kidId);
   const title = document.getElementById('exp-title').value.trim();
   const amount = parseFloat(document.getElementById('exp-amount').value);
+  const currency = document.getElementById('exp-currency').value;
   const date = document.getElementById('exp-date').value;
   const paid = document.getElementById('exp-paid').value === 'yes';
   const notes = document.getElementById('exp-notes').value.trim();
   if(!title){ alert('لازم تكتب بند المصروف (مثلا: مصاريف مدرسة، درس خصوصي...)'); return; }
   if(isNaN(amount) || amount < 0){ alert('اكتب مبلغ صحيح'); return; }
-  kid.expenses.push({ id: uid(), title, amount, date, paid, notes });
+  kid.expenses.push({ id: uid(), title, amount, currency, date, paid, notes });
   save();
   render();
 }
@@ -400,10 +490,12 @@ function editExpense(kidId, expId){
   if(title===null) return;
   const amountStr = prompt('المبلغ:', exp.amount);
   const amount = parseFloat(amountStr);
+  const currency = prompt('العملة (ج.م / د.ك / ...):', exp.currency||'ج.م');
   const date = prompt('التاريخ (YYYY-MM-DD):', exp.date||'');
   const notes = prompt('ملاحظات:', exp.notes||'');
   exp.title = title.trim() || exp.title;
   if(!isNaN(amount) && amount>=0) exp.amount = amount;
+  exp.currency = (currency||'ج.م').trim() || 'ج.م';
   exp.date = (date||'').trim();
   exp.notes = (notes||'').trim();
   save();
@@ -464,6 +556,23 @@ function renderKidsBar(){
   bar.innerHTML = html;
 }
 
+// إجماليات لكل عملة على حدة (لأن فيه مصاريف بالجنيه ومصاريف بالدينار)
+function totalsByCurrency(expenses){
+  const map = {};
+  expenses.forEach(e=>{
+    const cur = e.currency || 'ج.م';
+    if(!map[cur]) map[cur] = {total:0, paid:0, due:0};
+    const amt = Number(e.amount)||0;
+    map[cur].total += amt;
+    if(e.paid) map[cur].paid += amt; else map[cur].due += amt;
+  });
+  return map;
+}
+function fmtTotals(map, key){
+  const parts = Object.keys(map).map(cur => `${(map[cur][key]).toLocaleString('ar-EG')} ${cur}`);
+  return parts.length ? parts.join('  +  ') : '0';
+}
+
 function renderKidContent(){
   const container = document.getElementById('kidContent');
   const emptyState = document.getElementById('emptyState');
@@ -481,29 +590,23 @@ function renderKidContent(){
   if(kid.subjects.length === 0){
     subRows = `<tr class="empty-row"><td colspan="6">لسه مفيش مواد مضافة</td></tr>`;
   } else {
-    kid.subjects
-      .slice()
-      .forEach(s=>{
-        subRows += `<tr>
-          <td><strong>${esc(s.name)}</strong>${s.notes ? `<div style="font-size:.75rem;color:var(--muted)">${esc(s.notes)}</div>`:''}</td>
-          <td>${esc(s.teacher) || '<span style="color:var(--muted)">—</span>'}</td>
-          <td>${s.day ? `<span class="day-badge">${esc(s.day)}</span>` : '—'}</td>
-          <td>${esc(s.from)||'—'}</td>
-          <td>${esc(s.to)||'—'}</td>
-          <td>
-            <button class="icon-btn no-print" title="تعديل" onclick="editSubject('${kid.id}','${s.id}')">✏️</button>
-            <button class="icon-btn danger no-print" title="حذف" onclick="deleteSubject('${kid.id}','${s.id}')">🗑️</button>
-          </td>
-        </tr>`;
-      });
+    kid.subjects.forEach(s=>{
+      subRows += `<tr>
+        <td><strong>${esc(s.name)}</strong>${s.notes ? `<div style="font-size:.75rem;color:var(--muted)">${esc(s.notes)}</div>`:''}</td>
+        <td>${esc(s.teacher) || '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${s.day ? `<span class="day-badge">${esc(s.day)}</span>` : '—'}</td>
+        <td>${esc(s.from)||'—'}</td>
+        <td>${esc(s.to)||'—'}</td>
+        <td>
+          <button class="icon-btn no-print" title="تعديل" onclick="editSubject('${kid.id}','${s.id}')">✏️</button>
+          <button class="icon-btn danger no-print" title="حذف" onclick="deleteSubject('${kid.id}','${s.id}')">🗑️</button>
+        </td>
+      </tr>`;
+    });
   }
 
-  // expenses rows + totals
-  let total = 0, paidTotal = 0, dueTotal = 0;
-  kid.expenses.forEach(e=>{
-    total += Number(e.amount)||0;
-    if(e.paid) paidTotal += Number(e.amount)||0; else dueTotal += Number(e.amount)||0;
-  });
+  // expenses rows + totals (per currency)
+  const map = totalsByCurrency(kid.expenses);
 
   let expRows = '';
   if(kid.expenses.length === 0){
@@ -515,13 +618,12 @@ function renderKidContent(){
       .forEach(e=>{
         expRows += `<tr>
           <td><strong>${esc(e.title)}</strong>${e.notes ? `<div style="font-size:.75rem;color:var(--muted)">${esc(e.notes)}</div>`:''}</td>
-          <td>${(Number(e.amount)||0).toLocaleString('ar-EG')} جنيه</td>
+          <td>${(Number(e.amount)||0).toLocaleString('ar-EG')} ${esc(e.currency||'ج.م')}</td>
           <td>${esc(e.date) || '—'}</td>
           <td>
             <span class="${e.paid?'status-paid':'status-due'} no-print" style="cursor:pointer" onclick="toggleExpensePaid('${kid.id}','${e.id}')">
               ${e.paid ? '✅ مدفوع' : '⏳ لسه مستحق'}
             </span>
-            <span class="${e.paid?'status-paid':'status-due'}" style="display:none">${e.paid?'مدفوع':'مستحق'}</span>
           </td>
           <td>
             <button class="icon-btn no-print" title="تعديل" onclick="editExpense('${kid.id}','${e.id}')">✏️</button>
@@ -531,16 +633,20 @@ function renderKidContent(){
       });
   }
 
+  // currency options
+  let curOptions = CURRENCIES.map(c=>`<option value="${c}">${c}</option>`).join('');
+
   container.innerHTML = `
     <div class="card">
       <h2>
         <span>👤 ${esc(kid.name)} ${kid.stage ? `<span class="badge">${esc(kid.stage)}</span>` : ''}</span>
         <button class="btn btn-ghost btn-sm no-print" onclick="editKidInfo('${kid.id}')">✏️ تعديل البيانات</button>
       </h2>
+      ${kid.notes ? `<div class="kid-notes">📝 ${esc(kid.notes)}</div>` : ''}
     </div>
 
     <div class="card">
-      <h2>📅 الجدول الدراسي والمدرسين</h2>
+      <h2>📅 الجدول الدراسي والمدرسين <span class="badge">${kid.subjects.length} مادة</span></h2>
 
       <div class="add-form no-print">
         <div>
@@ -555,8 +661,9 @@ function renderKidContent(){
           <label>اليوم</label>
           <select id="subj-day">
             <option value="">اختر يوم</option>
-            <option>السبت</option><option>الأحد</option><option>الإثنين</option>
+            <option>السبت</option><option>الأحد</option><option>الاثنين</option>
             <option>الثلاثاء</option><option>الأربعاء</option><option>الخميس</option><option>الجمعة</option>
+            <option>السبت والثلاثاء</option><option>الأحد والأربعاء</option><option>الاثنين والخميس</option>
           </select>
         </div>
         <div>
@@ -590,9 +697,9 @@ function renderKidContent(){
       <h2>💰 المصاريف</h2>
 
       <div class="summary-grid">
-        <div class="stat"><div class="val">${total.toLocaleString('ar-EG')}</div><div class="lbl">إجمالي المصاريف (جنيه)</div></div>
-        <div class="stat paid"><div class="val">${paidTotal.toLocaleString('ar-EG')}</div><div class="lbl">تم دفعه</div></div>
-        <div class="stat due"><div class="val">${dueTotal.toLocaleString('ar-EG')}</div><div class="lbl">لسه مستحق</div></div>
+        <div class="stat"><div class="val">${fmtTotals(map,'total')}</div><div class="lbl">إجمالي المصاريف</div></div>
+        <div class="stat paid"><div class="val">${fmtTotals(map,'paid')}</div><div class="lbl">تم دفعه</div></div>
+        <div class="stat due"><div class="val">${fmtTotals(map,'due')}</div><div class="lbl">لسه مستحق</div></div>
       </div>
 
       <div class="add-form no-print">
@@ -601,8 +708,12 @@ function renderKidContent(){
           <input type="text" id="exp-title" placeholder="مثلا: مصاريف الترم">
         </div>
         <div>
-          <label>المبلغ (جنيه)</label>
+          <label>المبلغ</label>
           <input type="number" id="exp-amount" min="0" step="0.01" placeholder="0">
+        </div>
+        <div>
+          <label>العملة</label>
+          <select id="exp-currency">${curOptions}</select>
         </div>
         <div>
           <label>التاريخ</label>
