@@ -299,6 +299,53 @@
   .toast .t-close{margin-inline-start:auto;background:none;border:none;color:#fff;cursor:pointer;font-size:1.1rem;line-height:1;}
   @keyframes toastIn{from{transform:translateY(-12px);opacity:0}to{transform:translateY(0);opacity:1}}
 
+  /* ----- expense charts ----- */
+  .cur-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+  .cur-tabs button{
+    padding:6px 16px;border-radius:999px;border:1px solid var(--border);
+    background:var(--bg);cursor:pointer;font-weight:600;font-size:.85rem;color:var(--text);
+  }
+  .cur-tabs button.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .chart-title{font-weight:700;font-size:1rem;margin:0 0 4px;}
+  .chart-sub{font-size:.78rem;color:var(--muted);margin-bottom:14px;}
+  .chart-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.82rem;margin-top:10px;}
+  .chart-legend .item{display:inline-flex;align-items:center;gap:6px;}
+  .chart-legend .sw{width:12px;height:12px;border-radius:3px;display:inline-block;}
+
+  /* donut (paid vs due) */
+  .donut-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap;}
+  .donut{
+    width:150px;height:150px;border-radius:50%;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .donut-hole{
+    width:96px;height:96px;border-radius:50%;background:var(--card);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .donut-hole strong{font-size:1.5rem;color:var(--success);line-height:1;}
+  .donut-hole small{font-size:.72rem;color:var(--muted);margin-top:3px;}
+
+  /* horizontal bars (per child) */
+  .hbar-row{display:grid;grid-template-columns:70px 1fr auto;align-items:center;gap:10px;margin-bottom:10px;}
+  .hbar-name{font-size:.85rem;font-weight:600;display:flex;align-items:center;gap:6px;}
+  .hbar-name .sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto;}
+  .hbar-track{background:var(--bg);border-radius:6px;height:22px;overflow:hidden;}
+  .hbar-fill{height:100%;border-radius:6px;min-width:2px;}
+  .hbar-val{font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
+
+  /* monthly stacked columns */
+  .cols{display:flex;align-items:flex-end;gap:10px;height:180px;padding-top:10px;overflow-x:auto;}
+  .col{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:46px;flex:1;}
+  .col-stack{width:100%;max-width:52px;display:flex;flex-direction:column;justify-content:flex-end;height:150px;}
+  .col-seg{width:100%;}
+  .col-seg.paid{background:var(--success);}
+  .col-seg.due{background:var(--danger);}
+  .col-seg.top{border-radius:6px 6px 0 0;}
+  .col-seg + .col-seg.paid{margin-top:2px;}
+  .col-label{font-size:.72rem;color:var(--muted);text-align:center;white-space:nowrap;}
+  .col-total{font-size:.72rem;font-weight:700;font-variant-numeric:tabular-nums;}
+  .chart-empty{color:var(--muted);text-align:center;padding:24px;font-size:.9rem;}
+
   /* ----- unified weekly view ----- */
   .view-toggle{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
   .view-toggle button{
@@ -451,7 +498,8 @@ function defaultSeed(){
 
 let state = load();
 let activeKidId = state.kids.length ? state.kids[0].id : null;
-let viewMode = 'kids'; // 'kids' | 'week'
+let viewMode = 'kids'; // 'kids' | 'week' | 'charts'
+let chartCurrency = null; // العملة المختارة في شاشة الرسوم
 
 function load(){
   try{
@@ -1178,7 +1226,174 @@ function renderViewToggle(){
   el.innerHTML = `
     <button class="${viewMode==='kids'?'active':''}" onclick="setView('kids')">👤 حسب كل ولد</button>
     <button class="${viewMode==='week'?'active':''}" onclick="setView('week')">📆 الجدول الأسبوعي الموحّد</button>
+    <button class="${viewMode==='charts'?'active':''}" onclick="setView('charts')">📊 رسوم المصاريف</button>
   `;
+}
+
+// ---------- Expense charts (رسوم المصاريف) ----------
+const AR_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+function availableCurrencies(){
+  const set = [];
+  state.kids.forEach(k=> k.expenses.forEach(e=>{
+    const c = e.currency || 'ج.م';
+    if(!set.includes(c)) set.push(c);
+  }));
+  return set;
+}
+
+// العملة اللي فيها أكتر عدد بنود (تبقى الافتراضية)
+function defaultCurrency(){
+  const counts = {};
+  state.kids.forEach(k=> k.expenses.forEach(e=>{
+    const c = e.currency || 'ج.م';
+    counts[c] = (counts[c]||0) + 1;
+  }));
+  let best=null, bestN=-1;
+  Object.keys(counts).forEach(c=>{ if(counts[c] > bestN){ bestN=counts[c]; best=c; } });
+  return best || 'ج.م';
+}
+
+function monthLabel(ym){
+  if(ym === 'غير محدد') return 'بدون تاريخ';
+  const [y,m] = ym.split('-');
+  const mi = parseInt(m,10)-1;
+  return (AR_MONTHS[mi]||m) + ' ' + y;
+}
+
+function expenseAgg(currency){
+  let total=0, paid=0, due=0;
+  const perKid = [];
+  const monthly = {};
+  state.kids.forEach(k=>{
+    let kt=0, kp=0;
+    k.expenses.forEach(e=>{
+      if((e.currency||'ج.م') !== currency) return;
+      const amt = Number(e.amount)||0;
+      total += amt; kt += amt;
+      if(e.paid){ paid += amt; kp += amt; } else { due += amt; }
+      const m = (e.date||'').slice(0,7) || 'غير محدد';
+      if(!monthly[m]) monthly[m] = { paid:0, due:0 };
+      if(e.paid) monthly[m].paid += amt; else monthly[m].due += amt;
+    });
+    if(kt > 0) perKid.push({ id:k.id, name:k.name, color:kidColor(k.id), total:kt, paid:kp });
+  });
+  perKid.sort((a,b)=> b.total - a.total);
+  return { total, paid, due, perKid, monthly };
+}
+
+function fmtNum(n){ return (Math.round(n*100)/100).toLocaleString('ar-EG'); }
+
+function renderCharts(){
+  const container = document.getElementById('kidContent');
+  document.getElementById('emptyState').style.display = 'none';
+
+  const currencies = availableCurrencies();
+  if(currencies.length === 0){
+    container.innerHTML = `<div class="card"><div class="chart-empty">مفيش مصاريف مضافة عشان نرسمها.</div></div>`;
+    return;
+  }
+  if(!chartCurrency || !currencies.includes(chartCurrency)) chartCurrency = defaultCurrency();
+  const cur = chartCurrency;
+  const A = expenseAgg(cur);
+
+  // اختيار العملة
+  let curTabs = '';
+  if(currencies.length > 1){
+    curTabs = `<div class="cur-tabs">${currencies.map(c=>
+      `<button class="${c===cur?'active':''}" onclick="setChartCurrency('${c}')">${esc(c)}</button>`
+    ).join('')}</div>`;
+  }
+
+  // ملخص أرقام
+  const paidPct = A.total ? Math.round(A.paid / A.total * 100) : 0;
+  const summary = `
+    <div class="summary-grid">
+      <div class="stat"><div class="val">${fmtNum(A.total)} ${esc(cur)}</div><div class="lbl">إجمالي المصاريف</div></div>
+      <div class="stat paid"><div class="val">${fmtNum(A.paid)} ${esc(cur)}</div><div class="lbl">مدفوع</div></div>
+      <div class="stat due"><div class="val">${fmtNum(A.due)} ${esc(cur)}</div><div class="lbl">مستحق</div></div>
+    </div>`;
+
+  // 1) دونات: مدفوع مقابل مستحق
+  const donut = `
+    <div class="card">
+      <h3 class="chart-title">💰 المدفوع مقابل المستحق</h3>
+      <div class="chart-sub">نسبة اللي اتدفع من إجمالي مصاريف ${esc(cur)}</div>
+      <div class="donut-wrap">
+        <div class="donut" style="background:conic-gradient(var(--success) 0 ${paidPct}%, var(--danger) ${paidPct}% 100%)">
+          <div class="donut-hole"><strong>${paidPct}%</strong><small>مدفوع</small></div>
+        </div>
+        <div>
+          <div class="chart-legend" style="flex-direction:column;gap:8px">
+            <span class="item"><span class="sw" style="background:var(--success)"></span> مدفوع: <strong>${fmtNum(A.paid)} ${esc(cur)}</strong></span>
+            <span class="item"><span class="sw" style="background:var(--danger)"></span> مستحق: <strong>${fmtNum(A.due)} ${esc(cur)}</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // 2) بار أفقي: الإجمالي لكل ولد
+  const maxKid = A.perKid.reduce((m,k)=> Math.max(m,k.total), 0) || 1;
+  let kidBars = A.perKid.map(k=>{
+    const w = Math.max(2, Math.round(k.total / maxKid * 100));
+    return `<div class="hbar-row">
+      <div class="hbar-name"><span class="sw" style="background:${k.color}"></span>${esc(k.name)}</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${w}%;background:${k.color}"></div></div>
+      <div class="hbar-val">${fmtNum(k.total)} ${esc(cur)}</div>
+    </div>`;
+  }).join('');
+  if(!kidBars) kidBars = `<div class="chart-empty">مفيش بيانات بعملة ${esc(cur)}.</div>`;
+  const perKidCard = `
+    <div class="card">
+      <h3 class="chart-title">👨‍👩‍👧‍👦 المصاريف حسب كل ولد</h3>
+      <div class="chart-sub">إجمالي مصاريف كل ولد بعملة ${esc(cur)} (مرتّبة من الأكبر)</div>
+      ${kidBars}
+    </div>`;
+
+  // 3) أعمدة شهرية مكدّسة (مدفوع/مستحق)
+  const months = Object.keys(A.monthly).filter(m=>m!=='غير محدد').sort();
+  if(A.monthly['غير محدد']) months.push('غير محدد');
+  const maxMonth = months.reduce((m,k)=> Math.max(m, A.monthly[k].paid + A.monthly[k].due), 0) || 1;
+  let cols = months.map(m=>{
+    const d = A.monthly[m];
+    const tot = d.paid + d.due;
+    const paidH = Math.round(d.paid / maxMonth * 100);
+    const dueH = Math.round(d.due / maxMonth * 100);
+    const dueSeg = dueH>0 ? `<div class="col-seg due ${d.paid<=0?'top':'top'}" style="height:${dueH}%" title="مستحق: ${fmtNum(d.due)}"></div>` : '';
+    const paidSeg = paidH>0 ? `<div class="col-seg paid ${d.due<=0?'top':''}" style="height:${paidH}%" title="مدفوع: ${fmtNum(d.paid)}"></div>` : '';
+    return `<div class="col">
+      <div class="col-total">${fmtNum(tot)}</div>
+      <div class="col-stack">${dueSeg}${paidSeg}</div>
+      <div class="col-label">${esc(monthLabel(m))}</div>
+    </div>`;
+  }).join('');
+  if(!cols) cols = `<div class="chart-empty">مفيش تواريخ كفاية للرسم الشهري.</div>`;
+  const monthlyCard = `
+    <div class="card">
+      <h3 class="chart-title">📅 المصاريف شهريًا</h3>
+      <div class="chart-sub">توزيع المصاريف على الشهور بعملة ${esc(cur)}</div>
+      <div class="cols">${cols}</div>
+      <div class="chart-legend">
+        <span class="item"><span class="sw" style="background:var(--success)"></span> مدفوع</span>
+        <span class="item"><span class="sw" style="background:var(--danger)"></span> مستحق</span>
+      </div>
+    </div>`;
+
+  container.innerHTML = `
+    <div class="card">
+      <h2>📊 رسوم المصاريف</h2>
+      ${curTabs}
+      ${summary}
+    </div>
+    ${donut}
+    ${perKidCard}
+    ${monthlyCard}
+  `;
+}
+
+function setChartCurrency(c){
+  chartCurrency = c;
+  render();
 }
 
 // ---------- Reminders (تنبيه قبل كل حصة) ----------
@@ -1313,6 +1528,9 @@ function render(){
   if(viewMode === 'week'){
     document.getElementById('kidsBar').style.display = 'none';
     renderWeek();
+  } else if(viewMode === 'charts'){
+    document.getElementById('kidsBar').style.display = 'none';
+    renderCharts();
   } else {
     document.getElementById('kidsBar').style.display = 'flex';
     renderKidsBar();
